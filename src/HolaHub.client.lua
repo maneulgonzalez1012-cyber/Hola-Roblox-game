@@ -10,8 +10,9 @@ if env and type(env.HolaHubUnload) == "function" then
     pcall(env.HolaHubUnload)
 end
 
+local compile = loadstring
 local ok, Rayfield = pcall(function()
-    return loadstring(game:HttpGet("https://sirius.menu/gen2"))()
+    return compile(game:HttpGet("https://sirius.menu/gen2"))()
 end)
 assert(ok and Rayfield, "No se pudo cargar Rayfield Gen 2: " .. tostring(Rayfield))
 
