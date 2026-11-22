@@ -1,5 +1,24 @@
 # Scripts Roblox
 
+## VANTA Players — hitbox + ESP
+
+Hub independiente para jugadores, con Rayfield Gen 2. El **hitbox expander** modifica localmente el tamaño, transparencia y colisión del `HumanoidRootPart` de otros jugadores; tiene tamaño ajustable de 2 a 30 studs. El **ESP** muestra un resaltado a través de paredes, nombre, vida y distancia. Ambos empiezan desactivados. El filtro de equipo excluye compañeros no neutrales por defecto; la distancia máxima es ajustable entre 50 y 2000 studs. Al desactivar, cerrar o cambiar de objetivo, se restauran las propiedades guardadas y se eliminan los marcadores. Si el executor permite `getgenv`, volver a ejecutar limpia la instancia anterior.
+
+El cambio de hitbox es **solo local**: los juegos con validación de impactos en el servidor pueden ignorarlo. Puede no funcionar en juegos sin `HumanoidRootPart`, con estructuras distintas, streaming o restricciones propias; Roblox también limita los resaltados simultáneos. No se ha probado en Roblox ni se garantiza compatibilidad con todos los juegos o executors. Necesita `game:HttpGet`, `loadstring` y Rayfield desde `https://sirius.menu/gen2`.
+
+```lua
+loadstring(game:HttpGet("https://raw.githubusercontent.com/maneulgonzalez1012-cyber/Hola-Roblox-game/arena/24653128-hola-roblox-game/src/VantaPlayers.obfuscated.lua"))()
+```
+
+La distribución usa Prometheus con VM, cifrado de cadenas, aplanado de flujo y transformaciones de expresiones; **no usa Luarmor**. Based on Prometheus by Elias Oelschner, https://github.com/prometheus-lua/Prometheus ([licencia](licenses/Prometheus-LICENSE.txt)). La VM aumenta el tamaño y la carga; la fuente sigue pública y la ofuscación no es secreto. Con las dependencias y versiones indicadas en la sección Break In, se regenera y prueba con:
+
+```sh
+PROMETHEUS_DIR=/ruta/Prometheus LUAJIT=/ruta/LuaJIT/src/luajit python3 tools/obfuscate.py --players
+LUA=/ruta/luau/build/luau python3 tools/test_players.py
+```
+
+Las pruebas usan mocks, no sustituyen probar el juego real.
+
 ## Break In (Story)
 
 `src/BreakIn.client.lua` es un script independiente para **Break In (Story)** original (universo `1318971886`), con Rayfield Gen 2; no es para Break In 2. Incluye ataque automático, ESP, solicitudes de objetos, energía, curación con botiquín, roles, martillo, paquete de cola y sartén; caja fuerte, puerta y diálogo; teletransportes, velocidad, salto y salto infinito. La autoenergía está desactivada inicialmente y limita la frecuencia. Curar a todos envía una solicitud manual por jugador. La velocidad y el salto son cambios locales y se restauran al desactivar o cerrar el hub.

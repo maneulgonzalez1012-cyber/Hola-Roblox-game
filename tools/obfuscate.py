@@ -8,18 +8,21 @@ import sys
 
 root = Path(__file__).resolve().parent.parent
 arguments = argparse.ArgumentParser()
-arguments.add_argument("--break-in", action="store_true", help="Build Break In with Prometheus")
+group = arguments.add_mutually_exclusive_group()
+group.add_argument("--break-in", action="store_true", help="Build Break In with Prometheus")
+group.add_argument("--players", action="store_true", help="Build VANTA Players with Prometheus")
 choice = arguments.parse_args()
-if choice.break_in:
+if choice.break_in or choice.players:
     prometheus = os.environ.get("PROMETHEUS_DIR")
     luajit = os.environ.get("LUAJIT")
     if not prometheus or not luajit:
         sys.exit("Set PROMETHEUS_DIR and LUAJIT; see README.md for setup.")
-    output = root / "src/BreakIn.obfuscated.lua"
+    stem = "BreakIn" if choice.break_in else "VantaPlayers"
+    output = root / ("src/" + stem + ".obfuscated.lua")
     subprocess.run([
         luajit, str(Path(prometheus) / "cli.lua"),
         "--config", str(root / "tools/prometheus_breakin.lua"), "--LuaU", "--nocolors",
-        "--out", str(output), str(root / "src/BreakIn.client.lua"),
+        "--out", str(output), str(root / ("src/" + stem + ".client.lua")),
     ], cwd=prometheus, check=True)
     credit = "-- Based on Prometheus by Elias Oelschner, https://github.com/prometheus-lua/Prometheus\n"
     output.write_text(credit + output.read_text(encoding="utf-8"), encoding="utf-8")
