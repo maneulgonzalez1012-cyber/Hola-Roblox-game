@@ -1,5 +1,24 @@
 # Scripts Roblox
 
+## VANTA Prison Life
+
+Hub separado para **Prison Life de Aesthetical** (universo `73885730`, lugar `155615604`). Ofrece solicitudes manuales de objetos y equipos, viaje a lugares históricos o a un jugador, un intento de golpe/arresto a un usuario concreto, ESP, velocidad, salto, salto infinito y noclip local. Las funciones continuas están desactivadas al iniciar. Cerrar el hub restaura velocidad, salto y colisiones guardados y elimina las marcas. Para seleccionar a un jugador usa su nombre de usuario exacto, no el nombre mostrado.
+
+Las convenciones de `Workspace.Remote.ItemHandler`, `TeamEvent`, `arrest`, `ReplicatedStorage.meleeEvent`, objetos y coordenadas provienen de ejemplos comunitarios antiguos: [objetos, equipos y coordenadas](https://github.com/GhoulScripts/Ghoul-Hub-V2---Grape-Theme-games/blob/main/Prison%20Life), [golpe y arresto](https://pastebin.com/QTC2SZNN) y [remotes y equipos](https://github.com/FreezysTESTLUA/PRISON-LIFE-SCRIPT/blob/main/SCRIPTS). Pueden haber cambiado y no constituyen una API oficial. Las solicitudes pueden fallar, requerir distancia, rol, gamepass u otros permisos; recibir respuesta no confirma que la acción se haya completado. `InvokeServer` puede quedarse esperando y solo se permite una invocación pendiente por hub. El juego ha recibido actualizaciones, de modo que posiciones históricas pueden ser incorrectas. No se ha probado en Roblox; los cambios de movimiento y colisión son locales.
+
+```lua
+loadstring(game:HttpGet("https://raw.githubusercontent.com/maneulgonzalez1012-cyber/Hola-Roblox-game/arena/24653128-hola-roblox-game/src/PrisonLife.obfuscated.lua"))()
+```
+
+La distribución usa Prometheus (VM, cadenas, flujo y expresiones), **no Luarmor**. Based on Prometheus by Elias Oelschner, https://github.com/prometheus-lua/Prometheus ([licencia](licenses/Prometheus-LICENSE.txt)). El código legible sigue público, por lo que la ofuscación no es secreto. Con las dependencias indicadas en Break In:
+
+```sh
+PROMETHEUS_DIR=/ruta/Prometheus LUAJIT=/ruta/LuaJIT/src/luajit python3 tools/obfuscate.py --prison-life
+LUA=/ruta/luau/build/luau python3 tools/test_prisonlife.py
+```
+
+La prueba usa objetos simulados y no sustituye una prueba real en Roblox.
+
 ## VANTA Builder — Frontlines
 
 Script separado basado únicamente en el ejemplo de remote facilitado por el usuario: `ReplicatedStorage.BuildingSystem.Libraries.Grid.AddGridObject`, con identificador predeterminado `Wall$180$0` y coordenadas de rejilla `(7, -1, -1)`. Puedes introducir otras coordenadas enteras o un identificador exacto obtenido del mismo juego, enviar una pieza o solicitar una fila de hasta diez posiciones consecutivas en X, Y o Z (cada 0,5 s). La fila puede detenerse; cerrar el hub también cancela las solicitudes pendientes. No se han deducido otros IDs ni el significado de las secciones del identificador.
