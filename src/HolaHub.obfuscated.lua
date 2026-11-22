@@ -1,3 +1,8 @@
+if 5 ~= 5 then
+	local _dc51858 = "dc603"
+	local _dc67270 = 583
+	local _dc97275 = 451
+end
 local a = game:GetService("\80\108\97\121\101\114\115")
 local b = game:GetService("\82\117\110\83\101\114\118\105\99\101")
 local c = game:GetService("\87\111\114\107\115\112\97\99\101")
@@ -27,12 +32,16 @@ local j = {
 	autoFire = (1 == 0),
 	autoFireInterval = ((0.5 * 10) / 10),
 	aimRadius = bit32.bxor(bit32.bxor(250, 1515870810), 1515870810),
-	size = (954 - 946),
-	transparency = ((0.7 * 5) / 5),
-	color = Color3.fromRGB((-394 + 474), bit32.bxor(bit32.bxor(180, 1515870810), 1515870810), bit32.bxor(bit32.bxor(255, 1515870810), 1515870810)),
+	speedOrbs = (not true),
+	speedGems = (not not false),
+	speedZone = "\67\105\116\121",
+	speedInterval = ((0.5 * 10) / 10),
+	size = bit32.bxor(bit32.bxor(8, 1515870810), 1515870810),
+	transparency = ((0.7 * 4) / 4),
+	color = Color3.fromRGB((853 - 773), bit32.bxor(bit32.bxor(180, 1515870810), 1515870810), bit32.bxor(bit32.bxor(255, 1515870810), 1515870810)),
 }
 local k = {}
-local l = (not false)
+local l = (not not true)
 local m
 local n
 local o = d:WaitForChild("\80\108\97\121\101\114\71\117\105")
@@ -75,14 +84,14 @@ local function x(y, z)
 	aa.Name = "\72\111\108\97\72\117\98\72\105\103\104\108\105\103\104\116"
 	aa.Adornee = z
 	aa.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-	aa.FillTransparency = ((0.65 * 10) / 10)
+	aa.FillTransparency = ((0.65 * 4) / 4)
 	aa.OutlineTransparency = 0
 	aa.Parent = p
 	local ab = Instance.new("\66\105\108\108\98\111\97\114\100\71\117\105")
 	ab.Name = "\72\111\108\97\72\117\98\76\97\98\101\108"
-	ab.AlwaysOnTop = (not false)
-	ab.Size = UDim2.fromOffset((146 + 74), (-711 + 753))
-	ab.StudsOffsetWorldSpace = Vector3.new(0, (69 - 66), 0)
+	ab.AlwaysOnTop = (1 == 1)
+	ab.Size = UDim2.fromOffset((426 - 206), (-238 + 280))
+	ab.StudsOffsetWorldSpace = Vector3.new(0, bit32.bxor(bit32.bxor(3, 1515870810), 1515870810), 0)
 	ab.Parent = p
 	local ac = Instance.new("\84\101\120\116\76\97\98\101\108")
 	ac.BackgroundTransparency = 1
@@ -192,279 +201,393 @@ local function ai(aj)
 		warn("\72\111\108\97\32\72\117\98\58\32\110\111\32\115\101\32\112\117\100\111\32\100\105\115\112\97\114\97\114\58\32" .. tostring(bf))
 	end
 end
-local function bg(bh)
-	local bi = bh.Character
-	local bj = bi and bi:FindFirstChildOfClass("\72\117\109\97\110\111\105\100")
-	local bk = bi and bi:FindFirstChild("\72\117\109\97\110\111\105\100\82\111\111\116\80\97\114\116")
-	local bl = bi and bj and bj.Health > 0 and bk and bk:IsA("\66\97\115\101\80\97\114\116") and (not j.teamCheck or not ae(bh))
-	if not bl or (not j.esp and not j.hitbox) then
+local bg = 0
+local bh = (not not false)
+local function bi(bj)
+	if 10 < 1 then
+		local _dc16220 = 353
+		local _dc28263 = 258
+	end
+	if game.PlaceId ~= (3101668462 - 565) or not (j.speedOrbs or j.speedGems) then
 		if 5 ~= 5 then
 			local _dc97450 = "dc299"
 			local _dc81 = "dc155"
 			local _dc50265 = 827
 		end
-		u(bh)
 		return
 	end
-	local bm = k[bh]
-	if bm and bm.character ~= bi then
-		u(bh)
-		bm = nil
+	bg = bg + bj
+	if bg < j.speedInterval then
+		return
 	end
-	if not bm then
-		if 10 < 1 then
-			local _dc76321 = "dc162"
-		end
-		bm = x(bh, bi)
-	end
-	bm.highlight.Enabled = j.esp
-	bm.highlight.FillColor = j.color
-	bm.highlight.OutlineColor = j.color
-	local bn = bi:FindFirstChild("\72\101\97\100") or bk
-	bm.labelGui.Adornee = bn
-	bm.labelGui.Enabled = j.esp and (j.names or j.distance)
-	bm.label.TextColor3 = j.color
-	local bo = {}
-	if j.names then
-		table.insert(bo, bh.DisplayName .. "\32\40\64" .. bh.Name .. ")")
-	end
-	if j.distance then
-		local bp = d.Character
-		local bq = bp and bp:FindFirstChild("\72\117\109\97\110\111\105\100\82\111\111\116\80\97\114\116")
-		if bq and bq:IsA("\66\97\115\101\80\97\114\116") then
-			table.insert(bo, string.format("\37\100\32\115\116\117\100\115", math.floor((bq.Position - bk.Position).Magnitude + ((0.5 * 2) / 2))))
-		end
-	end
-	bm.label.Text = table.concat(bo, "\n")
-	if j.hitbox then
-		if 10 < 1 then
-			local _dc16220 = 353
-			local _dc28263 = 258
-		end
-		if bm.part ~= bk then
-			if 5 ~= 5 then
-				local _dc65700 = "dc946"
-				local _dc81143 = "dc880"
-				local _dc47808 = 237
+	bg = 0
+	local bk = game:GetService("\82\101\112\108\105\99\97\116\101\100\83\116\111\114\97\103\101")
+	local bl = bk:FindFirstChild("\114\69\118\101\110\116\115")
+	local bm = bl and bl:FindFirstChild("\111\114\98\69\118\101\110\116")
+	if not bm or not bm:IsA("\82\101\109\111\116\101\69\118\101\110\116") then
+		if not bh then
+			if 10 < 1 then
+				local _dc76321 = "dc162"
 			end
-			q(bm)
-			bm.part = bk
-			bm.original = {
-				size = bk.Size,
-				transparency = bk.Transparency,
-				canCollide = bk.CanCollide,
-			}
+			bh = (not false)
+			i:Notify({
+				title = "\76\101\103\101\110\100\115\32\111\102\32\83\112\101\101\100",
+				content = "\78\111\32\115\101\32\101\110\99\111\110\116\114\195\179\32\111\114\98\69\118\101\110\116\59\32\112\117\101\100\101\32\104\97\98\101\114\32\99\97\109\98\105\97\100\111\32\101\108\32\106\117\101\103\111\46",
+				duration = bit32.bxor(bit32.bxor(5, 1515870810), 1515870810),
+			})
 		end
-		local br = j.size
-		bk.Size = Vector3.new(br, br, br)
-		bk.Transparency = j.transparency
-		bk.CanCollide = (not true)
+		return
+	end
+	local bn, bo = pcall(function()
+		if j.speedOrbs then
+			bm:FireServer("\99\111\108\108\101\99\116\79\114\98", "\82\101\100\32\79\114\98", j.speedZone)
+		end
+		if j.speedGems then
+			bm:FireServer("\99\111\108\108\101\99\116\79\114\98", "\71\101\109", j.speedZone)
+		end
+	end)
+	if not bn then
+		if not bh then
+			bh = (not false)
+			warn("\72\111\108\97\32\72\117\98\58\32\101\114\114\111\114\32\97\108\32\114\101\99\111\103\101\114\58\32" .. tostring(bo))
+			i:Notify({
+				title = "\76\101\103\101\110\100\115\32\111\102\32\83\112\101\101\100",
+				content = "\69\114\114\111\114\32\97\108\32\114\101\99\111\103\101\114\59\32\114\101\118\105\115\97\32\108\97\32\99\111\110\115\111\108\97\46",
+				duration = (269 - 264),
+			})
+		end
 	else
-		q(bm)
+		if 5 ~= 5 then
+			local _dc65700 = "dc946"
+			local _dc81143 = "dc880"
+			local _dc47808 = 237
+		end
+		bh = (not not false)
 	end
 end
-local function bs()
+local function bp(bq)
+	if 1 == 2 then
+		local _dc28220 = "dc963"
+		local _dc82524 = "dc768"
+	end
+	local br = bq.Character
+	local bs = br and br:FindFirstChildOfClass("\72\117\109\97\110\111\105\100")
+	local bt = br and br:FindFirstChild("\72\117\109\97\110\111\105\100\82\111\111\116\80\97\114\116")
+	local bu = br and bs and bs.Health > 0 and bt and bt:IsA("\66\97\115\101\80\97\114\116") and (not j.teamCheck or not ae(bq))
+	if not bu or (not j.esp and not j.hitbox) then
+		u(bq)
+		return
+	end
+	local bv = k[bq]
+	if bv and bv.character ~= br then
+		u(bq)
+		bv = nil
+	end
+	if not bv then
+		bv = x(bq, br)
+	end
+	bv.highlight.Enabled = j.esp
+	bv.highlight.FillColor = j.color
+	bv.highlight.OutlineColor = j.color
+	local bw = br:FindFirstChild("\72\101\97\100") or bt
+	bv.labelGui.Adornee = bw
+	bv.labelGui.Enabled = j.esp and (j.names or j.distance)
+	bv.label.TextColor3 = j.color
+	local bx = {}
+	if j.names then
+		table.insert(bx, bq.DisplayName .. "\32\40\64" .. bq.Name .. ")")
+	end
+	if j.distance then
+		local by = d.Character
+		local bz = by and by:FindFirstChild("\72\117\109\97\110\111\105\100\82\111\111\116\80\97\114\116")
+		if bz and bz:IsA("\66\97\115\101\80\97\114\116") then
+			table.insert(bx, string.format("\37\100\32\115\116\117\100\115", math.floor((bz.Position - bt.Position).Magnitude + ((0.5 * 2) / 2))))
+		end
+	end
+	bv.label.Text = table.concat(bx, "\n")
+	if j.hitbox then
+		if bv.part ~= bt then
+			if 1 == 2 then
+				local _dc2190 = "dc962"
+				local _dc74262 = 99
+				local _dc60824 = 1
+			end
+			q(bv)
+			bv.part = bt
+			bv.original = {
+				size = bt.Size,
+				transparency = bt.Transparency,
+				canCollide = bt.CanCollide,
+			}
+		end
+		local ca = j.size
+		bt.Size = Vector3.new(ca, ca, ca)
+		bt.Transparency = j.transparency
+		bt.CanCollide = (not not false)
+	else
+		q(bv)
+	end
+end
+local function cb()
 	if not l then
 		return
 	end
-	l = (not not false)
+	l = (not true)
 	if m then
 		m:Disconnect()
 	end
 	if n then
 		n:Disconnect()
 	end
-	for bt in pairs(k) do
-		u(bt)
+	for cc in pairs(k) do
+		u(cc)
 	end
 	p:Destroy()
 	if not i.unloaded then
-		if 1 == 2 then
-			local _dc2190 = "dc962"
-			local _dc74262 = 99
-			local _dc60824 = 1
-		end
 		pcall(function()
 			i:Unload()
 		end)
 	end
-	if e and e.HolaHubUnload == bs then
+	if e and e.HolaHubUnload == cb then
 		e.HolaHubUnload = nil
 	end
 end
 if e then
-	if 1 == 2 then
-		local _dc28220 = "dc963"
-		local _dc82524 = "dc768"
+	if 10 < 1 then
+		local _dc81776 = 472
+		local _dc115 = 134
 	end
-	e.HolaHubUnload = bs
+	e.HolaHubUnload = cb
 end
-local bu = i:CreateTab({
+local cd = i:CreateTab({
 	name = "\69\83\80",
 })
-bu:CreateSection({
+cd:CreateSection({
 	name = "\86\105\115\117\97\108\101\115",
 })
-bu:CreateToggle({
+cd:CreateToggle({
 	name = "\65\99\116\105\118\97\114\32\69\83\80",
-	value = (not true),
-	callback = function(bv)
-		j.esp = bv
+	value = (not not false),
+	callback = function(ce)
+		j.esp = ce
 	end,
 })
-bu:CreateToggle({
+cd:CreateToggle({
 	name = "\77\111\115\116\114\97\114\32\110\111\109\98\114\101\115",
-	value = (not not true),
-	callback = function(bw)
-		j.names = bw
+	value = (1 == 1),
+	callback = function(cf)
+		j.names = cf
 	end,
 })
-bu:CreateToggle({
+cd:CreateToggle({
 	name = "\77\111\115\116\114\97\114\32\100\105\115\116\97\110\99\105\97",
-	value = (not false),
-	callback = function(bx)
-		j.distance = bx
+	value = (1 == 1),
+	callback = function(cg)
+		j.distance = cg
 	end,
 })
-bu:CreateToggle({
+cd:CreateToggle({
 	name = "\69\120\99\108\117\105\114\32\99\111\109\112\97\195\177\101\114\111\115\32\100\101\32\101\113\117\105\112\111",
 	value = (1 == 1),
-	callback = function(by)
-		j.teamCheck = by
+	callback = function(ch)
+		j.teamCheck = ch
 	end,
 })
-bu:CreateColorPicker({
+cd:CreateColorPicker({
 	name = "\67\111\108\111\114\32\100\101\108\32\69\83\80",
 	color = j.color,
-	callback = function(bz)
-		j.color = bz
+	callback = function(ci)
+		j.color = ci
 	end,
 })
-local ca = i:CreateTab({
+local cj = i:CreateTab({
 	name = "\72\105\116\98\111\120",
 })
-ca:CreateSection({
+cj:CreateSection({
 	name = "\72\117\109\97\110\111\105\100\82\111\111\116\80\97\114\116",
 })
-ca:CreateToggle({
+cj:CreateToggle({
 	name = "\65\99\116\105\118\97\114\32\101\120\112\97\110\115\111\114",
-	value = (1 == 0),
-	callback = function(cb)
-		j.hitbox = cb
+	value = (not not false),
+	callback = function(ck)
+		j.hitbox = ck
 	end,
 })
-ca:CreateSlider({
+cj:CreateSlider({
 	name = "\84\97\109\97\195\177\111",
 	range = {
-		bit32.bxor(bit32.bxor(2, 1515870810), 1515870810),
-		bit32.bxor(bit32.bxor(30, 1515870810), 1515870810),
+		(-730 + 732),
+		(395 - 365),
 	},
 	increment = 1,
-	value = (103 - 95),
+	value = bit32.bxor(bit32.bxor(8, 1515870810), 1515870810),
 	suffix = "\32\115\116\117\100\115",
-	callback = function(cc)
-		j.size = cc
+	callback = function(cl)
+		j.size = cl
 	end,
 })
-ca:CreateSlider({
+cj:CreateSlider({
 	name = "\84\114\97\110\115\112\97\114\101\110\99\105\97",
 	range = {
 		0,
 		1,
 	},
-	increment = ((0.1 * 10) / 10),
-	value = ((0.7 * 2) / 2),
-	callback = function(cd)
-		j.transparency = cd
+	increment = ((0.1 * 4) / 4),
+	value = ((0.7 * 5) / 5),
+	callback = function(cm)
+		j.transparency = cm
 	end,
 })
-local ce = i:CreateTab({
+local cn = i:CreateTab({
 	name = "\67\111\109\98\97\116\101",
 })
-ce:CreateSection({
+cn:CreateSection({
 	name = "\83\110\105\112\101\114\32\65\114\101\110\97\32\194\183\32\101\120\112\101\114\105\109\101\110\116\97\108",
 })
-local cf = ce:CreateToggle({
+local co = cn:CreateToggle({
 	name = "\65\117\116\111\32\100\105\115\112\97\114\111",
 	description = "\65\112\117\110\116\97\32\121\32\100\105\115\112\97\114\97\32\97\32\101\110\101\109\105\103\111\115\32\118\105\115\105\98\108\101\115\59\32\110\101\99\101\115\105\116\97\32\117\110\32\109\195\169\116\111\100\111\32\100\101\32\100\105\115\112\97\114\111\32\99\111\109\112\97\116\105\98\108\101\46",
 	value = (1 == 0),
-	callback = function(cg)
-		if cg and game.PlaceId ~= (122446657158144 - 427) then
+	callback = function(cp)
+		if cp and game.PlaceId ~= (122446657157885 - 168) then
 			i:Notify({
 				title = "\65\117\116\111\32\100\105\115\112\97\114\111",
 				content = "\83\111\108\111\32\102\117\110\99\105\111\110\97\32\101\110\32\83\110\105\112\101\114\32\65\114\101\110\97\46",
-				duration = (-76 + 80),
+				duration = bit32.bxor(bit32.bxor(4, 1515870810), 1515870810),
 			})
 		end
-		j.autoFire = cg
+		j.autoFire = cp
 		ag = 0
-		ah = (not not false)
+		ah = (1 == 0)
 	end,
 })
-ce:CreateSlider({
+cn:CreateSlider({
 	name = "\82\97\100\105\111\32\100\101\32\109\105\114\97",
 	range = {
 		bit32.bxor(bit32.bxor(50, 1515870810), 1515870810),
-		bit32.bxor(bit32.bxor(600, 1515870810), 1515870810),
+		(1364 - 764),
 	},
-	increment = (11 - 1),
-	value = (-253 + 503),
+	increment = (879 - 869),
+	value = bit32.bxor(bit32.bxor(250, 1515870810), 1515870810),
 	suffix = "\32\112\120",
-	callback = function(ch)
-		j.aimRadius = ch
+	callback = function(cq)
+		j.aimRadius = cq
 	end,
 })
-ce:CreateSlider({
+cn:CreateSlider({
 	name = "\73\110\116\101\114\118\97\108\111\32\100\101\32\100\105\115\112\97\114\111",
 	range = {
-		((0.2 * 10) / 10),
-		(-766 + 768),
+		((0.2 * 5) / 5),
+		bit32.bxor(bit32.bxor(2, 1515870810), 1515870810),
+	},
+	increment = ((0.1 * 5) / 5),
+	value = ((0.5 * 10) / 10),
+	suffix = "\32\115",
+	callback = function(cr)
+		j.autoFireInterval = cr
+	end,
+})
+local cs = i:CreateTab({
+	name = "\76\101\103\101\110\100\115\32\111\102\32\83\112\101\101\100",
+})
+cs:CreateSection({
+	name = "\82\101\99\111\108\101\99\99\105\195\179\110\32\194\183\32\101\120\112\101\114\105\109\101\110\116\97\108",
+})
+local function ct(cu)
+	if cu and game.PlaceId ~= (3101667016 + 881) then
+		i:Notify({
+			title = "\76\101\103\101\110\100\115\32\111\102\32\83\112\101\101\100",
+			content = "\69\110\116\114\97\32\97\108\32\106\117\101\103\111\32\112\97\114\97\32\117\116\105\108\105\122\97\114\32\101\115\116\97\32\102\117\110\99\105\195\179\110\46",
+			duration = (-234 + 238),
+		})
+	end
+end
+cs:CreateToggle({
+	name = "\65\117\116\111\32\111\114\98\101\115\32\114\111\106\111\115",
+	value = (not not false),
+	callback = function(cv)
+		j.speedOrbs = cv
+		ct(cv)
+	end,
+})
+cs:CreateToggle({
+	name = "\65\117\116\111\32\103\101\109\97\115",
+	value = (not true),
+	callback = function(cw)
+		j.speedGems = cw
+		ct(cw)
+	end,
+})
+cs:CreateDropdown({
+	name = "\90\111\110\97\32\100\101\32\114\101\99\111\108\101\99\99\105\195\179\110",
+	description = "\83\101\108\101\99\99\105\111\110\97\32\108\97\32\122\111\110\97\32\113\117\101\32\116\105\101\110\101\115\32\100\101\115\98\108\111\113\117\101\97\100\97\46",
+	options = {
+		"\67\105\116\121",
+		"\83\110\111\119\32\67\105\116\121",
+		"\77\97\103\109\97\32\67\105\116\121",
+	},
+	value = "\67\105\116\121",
+	callback = function(cx)
+		j.speedZone = cx
+	end,
+})
+cs:CreateSlider({
+	name = "\73\110\116\101\114\118\97\108\111\32\100\101\32\114\101\99\111\108\101\99\99\105\195\179\110",
+	range = {
+		((0.2 * 2) / 2),
+		(-281 + 283),
 	},
 	increment = ((0.1 * 10) / 10),
 	value = ((0.5 * 10) / 10),
 	suffix = "\32\115",
-	callback = function(ci)
-		j.autoFireInterval = ci
+	callback = function(cy)
+		j.speedInterval = cy
 	end,
 })
-local cj = i:CreateTab({
+local cz = i:CreateTab({
 	name = "\79\112\99\105\111\110\101\115",
 })
-cj:CreateButton({
+cz:CreateButton({
 	name = "\67\101\114\114\97\114\32\121\32\114\101\115\116\97\117\114\97\114",
-	callback = bs,
+	callback = cb,
 })
 n = a.PlayerRemoving:Connect(u)
-local ck = 0
-m = b.Heartbeat:Connect(function(cl)
+local da = 0
+m = b.Heartbeat:Connect(function(db)
 	if i.unloaded then
-		bs()
+		cb()
 		return
 	end
+	if j.speedOrbs or j.speedGems then
+		local dc, dd = pcall(bi, db)
+		if not dc then
+			warn("\72\111\108\97\32\72\117\98\58\32\101\114\114\111\114\32\100\101\32\76\101\103\101\110\100\115\32\111\102\32\83\112\101\101\100\58\32" .. tostring(dd))
+		end
+	end
 	if j.autoFire then
-		local cm, cn = pcall(ai, cl)
-		if not cm then
+		local de, df = pcall(ai, db)
+		if not de then
 			j.autoFire = (not not false)
-			cf:Set((not true))
-			warn("\72\111\108\97\32\72\117\98\58\32\97\117\116\111\32\100\105\115\112\97\114\111\32\100\101\116\101\110\105\100\111\58\32" .. tostring(cn))
+			co:Set((not true))
+			warn("\72\111\108\97\32\72\117\98\58\32\97\117\116\111\32\100\105\115\112\97\114\111\32\100\101\116\101\110\105\100\111\58\32" .. tostring(df))
 			i:Notify({
 				title = "\65\117\116\111\32\100\105\115\112\97\114\111",
 				content = "\69\114\114\111\114\59\32\114\101\118\105\115\97\32\108\97\32\99\111\110\115\111\108\97\32\100\101\108\32\101\120\101\99\117\116\111\114\46",
-				duration = (579 - 574),
+				duration = bit32.bxor(bit32.bxor(5, 1515870810), 1515870810),
 			})
 		end
 	end
-	ck = ck + cl
-	if ck < ((0.2 * 5) / 5) then
+	da = da + db
+	if da < ((0.2 * 2) / 2) then
 		return
 	end
-	ck = 0
-	for _, co in ipairs(a:GetPlayers()) do
-		if co ~= d then
-			local cp, cq = pcall(bg, co)
-			if not cp then
-				u(co)
-				warn("\72\111\108\97\32\72\117\98\58\32\101\114\114\111\114\32\97\108\32\97\99\116\117\97\108\105\122\97\114\32" .. co.Name .. "\58\32" .. tostring(cq))
+	da = 0
+	for _, dg in ipairs(a:GetPlayers()) do
+		if dg ~= d then
+			local dh, di = pcall(bp, dg)
+			if not dh then
+				u(dg)
+				warn("\72\111\108\97\32\72\117\98\58\32\101\114\114\111\114\32\97\108\32\97\99\116\117\97\108\105\122\97\114\32" .. dg.Name .. "\58\32" .. tostring(di))
 			end
 		end
 	end

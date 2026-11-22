@@ -38,6 +38,7 @@ function window:CreateTab(props)
         CreateSection = function() end,
         CreateToggle = function(_, p) controls[p.name] = p.callback end,
         CreateSlider = function(_, p) controls[p.name] = p.callback end,
+        CreateDropdown = function(_, p) controls[p.name] = p.callback end,
         CreateColorPicker = function(_, p) controls[p.name] = p.callback end,
         CreateButton = function(_, p) controls[p.name] = p.callback end,
     }
@@ -65,10 +66,17 @@ local camera = { CFrame = { Position = Vector3.new(0, 0, 0) }, ViewportSize = se
 function camera:WorldToViewportPoint() return { X = 400, Y = 300, Z = 10 }, true end
 local world = { CurrentCamera = camera, blocked = false }
 function world:Raycast() if self.blocked then return { Instance = { IsDescendantOf = function() return false end } } end end
+local requests = {}
+local remote = { IsA = function(_, name) return name == "RemoteEvent" end }
+function remote:FireServer(...) table.insert(requests, { ... }) end
+local events = { available = true }
+function events:FindFirstChild(name) if self.available and name == "orbEvent" then return remote end end
+local storage = { FindFirstChild = function(_, name) if name == "rEvents" then return events end end }
 local game = { PlaceId = 122446657157717 }
 function game:GetService(name)
     if name == "Players" then return players end
     if name == "Workspace" then return world end
+    if name == "ReplicatedStorage" then return storage end
     return runService
 end
 function game:HttpGet(url) assert(url == "https://sirius.menu/gen2"); return "rayfield" end
@@ -129,7 +137,29 @@ game.PlaceId = 122446657157717
 controls["Auto disparo"](false)
 heartbeat:Fire(0.5)
 assert(shots == 1)
+
+controls["Auto orbes rojos"](true)
+controls["Auto gemas"](true)
+heartbeat:Fire(1)
+assert(#requests == 0) -- No requests outside Legends of Speed.
+game.PlaceId = 3101667897
+heartbeat:Fire(0.5)
+assert(#requests == 2 and requests[1][1] == "collectOrb" and requests[1][2] == "Red Orb" and requests[1][3] == "City")
+assert(requests[2][2] == "Gem" and requests[2][3] == "City")
+events.available = false
+heartbeat:Fire(0.5)
+assert(#requests == 2)
+events.available = true
+controls["Zona de recolección"]("Snow City")
+controls["Auto orbes rojos"](false)
+heartbeat:Fire(0.5)
+assert(#requests == 3 and requests[3][2] == "Gem" and requests[3][3] == "Snow City")
+controls["Auto gemas"](false)
+heartbeat:Fire(1)
+assert(#requests == 3)
 controls["Cerrar y restaurar"]()
+heartbeat:Fire(1)
+assert(#requests == 3)
 assert(root.Size.X == 2 and root.Transparency == 1 and root.CanCollide == true)
 assert(window.unloaded and globals.HolaHubUnload == nil)
-print("OK: ESP, hitbox, auto disparo, obstáculos, equipos y restauración")
+print("OK: ESP, hitbox, auto disparo, auto recolección, equipos y restauración")

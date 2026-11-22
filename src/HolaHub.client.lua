@@ -33,6 +33,10 @@ local state = {
     autoFire = false,
     autoFireInterval = 0.5,
     aimRadius = 250,
+    speedOrbs = false,
+    speedGems = false,
+    speedZone = "City",
+    speedInterval = 0.5,
     size = 8,
     transparency = 0.7,
     color = Color3.fromRGB(80, 180, 255),
@@ -163,6 +167,40 @@ local function autoFireTick(dt)
     end
 end
 
+-- Legends of Speed: documented community remote; the server may reject it.
+-- Kept separate from combat and disabled unless explicitly enabled.
+local speedElapsed = 0
+local speedWarning = false
+local function speedTick(dt)
+    if game.PlaceId ~= 3101667897 or not (state.speedOrbs or state.speedGems) then return end
+    speedElapsed = speedElapsed + dt
+    if speedElapsed < state.speedInterval then return end
+    speedElapsed = 0
+    local storage = game:GetService("ReplicatedStorage")
+    local events = storage:FindFirstChild("rEvents")
+    local orbEvent = events and events:FindFirstChild("orbEvent")
+    if not orbEvent or not orbEvent:IsA("RemoteEvent") then
+        if not speedWarning then
+            speedWarning = true
+            window:Notify({ title = "Legends of Speed", content = "No se encontró orbEvent; puede haber cambiado el juego.", duration = 5 })
+        end
+        return
+    end
+    local success, err = pcall(function()
+        if state.speedOrbs then orbEvent:FireServer("collectOrb", "Red Orb", state.speedZone) end
+        if state.speedGems then orbEvent:FireServer("collectOrb", "Gem", state.speedZone) end
+    end)
+    if not success then
+        if not speedWarning then
+            speedWarning = true
+            warn("Hola Hub: error al recoger: " .. tostring(err))
+            window:Notify({ title = "Legends of Speed", content = "Error al recoger; revisa la consola.", duration = 5 })
+        end
+    else
+        speedWarning = false
+    end
+end
+
 local function updatePlayer(player)
     local character = player.Character
     local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -261,6 +299,29 @@ local autoFireToggle = combatTab:CreateToggle({
 combatTab:CreateSlider({ name = "Radio de mira", range = { 50, 600 }, increment = 10, value = 250, suffix = " px", callback = function(v) state.aimRadius = v end })
 combatTab:CreateSlider({ name = "Intervalo de disparo", range = { 0.2, 2 }, increment = 0.1, value = 0.5, suffix = " s", callback = function(v) state.autoFireInterval = v end })
 
+local speedTab = window:CreateTab({ name = "Legends of Speed" })
+speedTab:CreateSection({ name = "Recolección · experimental" })
+local function speedToggleNotice(value)
+    if value and game.PlaceId ~= 3101667897 then
+        window:Notify({ title = "Legends of Speed", content = "Entra al juego para utilizar esta función.", duration = 4 })
+    end
+end
+speedTab:CreateToggle({ name = "Auto orbes rojos", value = false, callback = function(v)
+    state.speedOrbs = v
+    speedToggleNotice(v)
+end })
+speedTab:CreateToggle({ name = "Auto gemas", value = false, callback = function(v)
+    state.speedGems = v
+    speedToggleNotice(v)
+end })
+speedTab:CreateDropdown({
+    name = "Zona de recolección",
+    description = "Selecciona la zona que tienes desbloqueada.",
+    options = { "City", "Snow City", "Magma City" }, value = "City",
+    callback = function(v) state.speedZone = v end,
+})
+speedTab:CreateSlider({ name = "Intervalo de recolección", range = { 0.2, 2 }, increment = 0.1, value = 0.5, suffix = " s", callback = function(v) state.speedInterval = v end })
+
 local settingsTab = window:CreateTab({ name = "Opciones" })
 settingsTab:CreateButton({ name = "Cerrar y restaurar", callback = cleanup })
 
@@ -268,6 +329,12 @@ removalConnection = Players.PlayerRemoving:Connect(clearEntry)
 local elapsed = 0
 updateConnection = RunService.Heartbeat:Connect(function(dt)
     if window.unloaded then cleanup(); return end
+    if state.speedOrbs or state.speedGems then
+        local success, err = pcall(speedTick, dt)
+        if not success then
+            warn("Hola Hub: error de Legends of Speed: " .. tostring(err))
+        end
+    end
     if state.autoFire then
         local success, err = pcall(autoFireTick, dt)
         if not success then

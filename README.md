@@ -8,6 +8,7 @@ Script de cliente para executor con **Rayfield Gen 2**, ESP de jugadores y expan
 - Filtro de equipo compartido por ESP y hitbox, activado por defecto. Los jugadores neutrales no se consideran compañeros automáticamente.
 - Expansión local del `HumanoidRootPart`, con tamaño y transparencia configurables. Al desactivarla, cambiar de equipo, reaparecer o cerrar, se restauran las propiedades originales capturadas.
 - **Combate → Auto disparo (experimental)** para Sniper Arena (place ID `122446657157717`): selecciona un enemigo visible cerca del centro de la pantalla, apunta la cámara y prueba un clic (`mouse1click`) o activa la `Tool` equipada. Tiene intervalo y radio configurables y respeta el filtro de equipo. No modifica remotes ni garantiza disparos o eliminaciones; puede no ser compatible con el arma o executor del juego, especialmente en móvil.
+- **Legends of Speed → Auto orbes rojos / Auto gemas (experimental)** para Legends of Speed (place ID `3101667897`): envía solicitudes `collectOrb` para City, Snow City o Magma City con intervalo ajustable. Las dos funciones están desactivadas al iniciar. Si el evento no existe se muestra un aviso; el servidor puede rechazar las solicitudes o haber cambiado. No incluye auto rebirth. La interfaz de eventos se basa en [este ejemplo de la comunidad](https://github.com/viceywiceyuwu/Legends-of-Speed-script/blob/main/Main.lua), no está verificada en el juego actual.
 - El botón **Cerrar y restaurar** desconecta el script y elimina sus objetos. Si el executor proporciona `getgenv`, ejecutar de nuevo el script cierra la instancia anterior.
 
 La hitbox se modifica **solo en el cliente**: si el servidor valida los impactos u otros scripts cambian estas propiedades, puede no tener efecto o interferir. El script no se ha probado dentro de Roblox; la compatibilidad depende del juego y del executor.
@@ -43,7 +44,7 @@ OBSCURA_CLI=/ruta/obscura/packages/cli/dist/cli.js OBSCURA_NATIVE_BIN=/ruta/luau
 LUAU=/ruta/luau/build/luau python3 tools/test_obfuscation.py
 ```
 
-La prueba ejecuta ambas variantes en Luau con objetos simulados: verifica ESP, hitbox, auto disparo, obstáculos, filtro de equipo y restauración. No sustituye una prueba en Roblox con un executor.
+La prueba ejecuta ambas variantes en Luau con objetos simulados: verifica ESP, hitbox, auto disparo, recolección, obstáculos, filtro de equipo y restauración. No sustituye una prueba en Roblox con un executor.
 
 Si tu executor admite `readfile`, puedes guardar el archivo como `HolaHub.client.lua` en su carpeta de archivos y usar:
 
