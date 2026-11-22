@@ -6,7 +6,7 @@
 
 Las convenciones de eventos y coordenadas se basan en [ejemplos de la comunidad](https://scriptrb.com/post.php?id=797) y [este script público](https://gist.github.com/NumanZaidan/6368ec43473cc22ee58a09854c12ee46), no en una API oficial. Para probar ambas versiones con objetos simulados, ejecuta `LUA=/ruta/al/luau python3 tools/test_breakin.py`. No sustituye una prueba en Roblox.
 
-El loadstring usa una versión con aplanado de flujo, expresiones numéricas y cadenas protegidas. Based on Prometheus by Elias Oelschner, https://github.com/prometheus-lua/Prometheus ([licencia](licenses/Prometheus-LICENSE.txt)). **No usa Luarmor**. El código fuente permanece público, por lo que la ofuscación no proporciona secreto.
+El loadstring usa Prometheus para renombrar identificadores, proteger cadenas, reescribir constantes en expresiones, aplanar flujo y compilar el script a instrucciones ejecutadas por una VM de registros en Lua. Based on Prometheus by Elias Oelschner, https://github.com/prometheus-lua/Prometheus ([licencia](licenses/Prometheus-LICENSE.txt)). **No usa Luarmor**. La VM incrementa el tamaño y el coste de ejecución; la compatibilidad con cada executor no está probada. El código fuente permanece público, por lo que la ofuscación no proporciona secreto.
 
 ```lua
 loadstring(game:HttpGet("https://raw.githubusercontent.com/maneulgonzalez1012-cyber/Hola-Roblox-game/arena/24653128-hola-roblox-game/src/BreakIn.obfuscated.lua"))()

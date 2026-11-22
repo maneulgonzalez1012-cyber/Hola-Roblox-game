@@ -63,9 +63,9 @@ local gui = { FindFirstChild = function(_,n) if n == "TextLabel" then return lab
 local note = { FindFirstChild = function(_,n) if n == "SurfaceGui" then return gui end end }
 local world = {}
 function world:FindFirstChild(n) if n == "BadGuys" then return group end; if n == "CodeNote" then return note end end
-local events = {}
+local events = { unavailable = false }
 function events:FindFirstChild(name)
-    if name == "Missing" then return nil end
+    if self.unavailable or name == "Missing" then return nil end
     return { IsA = function(_, n) return n == "RemoteEvent" end,
         FireServer = function(_, ...) table.insert(requests,{name=name,args={...}}) end }
 end
@@ -110,10 +110,29 @@ callbacks["Solicitar apertura de caja"]()
 assert(requests[3].name == "Safe" and requests[3].args[1] == "1234")
 callbacks["Casa"]()
 assert(root.CFrame.x == -36 and root.CFrame.z == -200)
+-- Un enemigo muerto se ignora; si faltan remotes no se envía y se avisa.
+callbacks["Alcance"](30)
+near.humanoid.Health = 0
+heartbeat:Fire(0.5)
+assert(#requests == 4 and requests[4].args[1] == far)
+events.unavailable = true
+local oldMessages = #messages
+heartbeat:Fire(0.5)
+assert(#requests == 4 and #messages == oldMessages + 1)
+heartbeat:Fire(0.5)
+assert(#messages == oldMessages + 1) -- sin spam de avisos
+events.unavailable = false
+player.Character = nil
+heartbeat:Fire(0.5)
+assert(#requests == 4)
+player.Character = character
+callbacks["Auto ataque"](false)
+heartbeat:Fire(1)
+assert(#requests == 4)
 game.GameId = 1; game.PlaceId = 1
 callbacks["Solicitar objeto"](); heartbeat:Fire(1)
-assert(#requests == 3)
+assert(#requests == 4)
 callbacks["Cerrar y limpiar"]()
 assert(window.unloaded and visuals[1].destroyed and globals.BreakInHubUnload == nil)
-heartbeat:Fire(1); assert(#requests == 3)
-print("OK: combate, alcance, objetos, caja, viaje y limpieza")
+heartbeat:Fire(1); assert(#requests == 4)
+print("OK: combate, alcance, objetos, caja, errores y limpieza")
