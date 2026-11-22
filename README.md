@@ -4,15 +4,29 @@
 
 `src/BreakIn.client.lua` es un script independiente para **Break In (Story)** (universo `1318971886`), con Rayfield Gen 2: ataque automático al enemigo cercano, resaltado de enemigos, solicitudes de objetos/energía, lectura y solicitud de apertura de la caja, y teletransportes. Es compatible con el juego original, no con Break In 2. Las funciones basadas en eventos y posiciones son experimentales: pueden haber cambiado o ser rechazadas por el servidor. No se han probado en Roblox.
 
-Las convenciones de eventos y coordenadas se basan en [ejemplos de la comunidad](https://scriptrb.com/post.php?id=797) y [este script público](https://gist.github.com/NumanZaidan/6368ec43473cc22ee58a09854c12ee46), no en una API oficial. Para probar la lógica con objetos simulados, ejecuta `LUA=/ruta/al/interprete python3 tools/test_breakin.py` (se ha comprobado con Fengari). No sustituye una prueba en Roblox.
+Las convenciones de eventos y coordenadas se basan en [ejemplos de la comunidad](https://scriptrb.com/post.php?id=797) y [este script público](https://gist.github.com/NumanZaidan/6368ec43473cc22ee58a09854c12ee46), no en una API oficial. Para probar ambas versiones con objetos simulados, ejecuta `LUA=/ruta/al/luau python3 tools/test_breakin.py`. No sustituye una prueba en Roblox.
 
-El loadstring usa una versión ofuscada con Obscura, **no Luarmor**. Para Luarmor hay que subir el código fuente al panel de Luarmor. El código fuente permanece público.
+El loadstring usa una versión con aplanado de flujo, expresiones numéricas y cadenas protegidas. Based on Prometheus by Elias Oelschner, https://github.com/prometheus-lua/Prometheus ([licencia](licenses/Prometheus-LICENSE.txt)). **No usa Luarmor**. El código fuente permanece público, por lo que la ofuscación no proporciona secreto.
 
 ```lua
 loadstring(game:HttpGet("https://raw.githubusercontent.com/maneulgonzalez1012-cyber/Hola-Roblox-game/arena/24653128-hola-roblox-game/src/BreakIn.obfuscated.lua"))()
 ```
 
-Para regenerar Break In con las herramientas de abajo: `OBSCURA_CLI=/ruta/obscura/packages/cli/dist/cli.js OBSCURA_NATIVE_BIN=/ruta/luau/build/obscura_native python3 tools/obfuscate.py --break-in`.
+Para regenerar Break In se necesitan Python 3, LuaJIT y Prometheus. Instala las herramientas fuera de este repositorio y utiliza sus rutas absolutas:
+
+```sh
+git clone https://github.com/prometheus-lua/Prometheus.git
+git -C Prometheus checkout a98c50165f2a53f6d765a82eee60dfea53803445
+git clone https://github.com/LuaJIT/LuaJIT.git
+git -C LuaJIT checkout 96f7b297326e9fd454b7186c6858b2773f94a0dc
+make -C LuaJIT -j4
+
+# Desde la raíz de este repositorio:
+PROMETHEUS_DIR=/ruta/Prometheus LUAJIT=/ruta/LuaJIT/src/luajit python3 tools/obfuscate.py --break-in
+LUA=/ruta/luau/build/luau python3 tools/test_breakin.py
+```
+
+La configuración reproducible está en `tools/prometheus_breakin.lua`; la compilación de Luau se explica más abajo.
 
 # Blade Ball Hub
 

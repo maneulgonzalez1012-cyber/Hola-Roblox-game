@@ -79,9 +79,18 @@ function game:GetService(name)
     error(name)
 end
 function game:HttpGet(url) assert(url == "https://sirius.menu/gen2"); return "rayfield" end
-local function runHub()
+local function runHub(...)
 -- INSERT_SOURCE_HERE
 end
+-- Prometheus resolves Roblox globals from the Luau function environment.
+local environment = getfenv(runHub)
+environment.game = game
+environment.Instance = Instance
+environment.Enum = Enum
+environment.Color3 = Color3
+environment.CFrame = CFrame
+environment.loadstring = loadstring
+environment.getgenv = getgenv
 runHub()
 assert(type(globals.BreakInHubUnload) == "function")
 heartbeat:Fire(1); assert(#requests == 0)
