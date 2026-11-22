@@ -2,6 +2,7 @@
 -- La expansión solo modifica el cliente; el servidor decide si acepta los impactos.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 local localPlayer = Players.LocalPlayer
 assert(localPlayer, "Hola Hub debe ejecutarse en el cliente")
 
@@ -29,6 +30,9 @@ local state = {
     distance = true,
     teamCheck = true,
     hitbox = false,
+    autoFire = false,
+    autoFireInterval = 0.5,
+    aimRadius = 250,
     size = 8,
     transparency = 0.7,
     color = Color3.fromRGB(80, 180, 255),
@@ -97,6 +101,66 @@ local function sameTeam(player)
     -- Neutral players are not automatically treated as teammates.
     return not localPlayer.Neutral and not player.Neutral
         and localPlayer.Team ~= nil and localPlayer.Team == player.Team
+end
+
+-- Experimental: this aims the camera at a visible opponent, then attempts a
+-- normal click or Tool activation. It does not forge a game-specific remote.
+local lastFire = 0
+local fireWarning = false
+local function autoFireTick(dt)
+    if not state.autoFire or game.PlaceId ~= 122446657157717 then return end
+    lastFire = lastFire + dt
+    if lastFire < state.autoFireInterval then return end
+    lastFire = 0
+    local camera = Workspace.CurrentCamera
+    local ownCharacter = localPlayer.Character
+    local ownHumanoid = ownCharacter and ownCharacter:FindFirstChildOfClass("Humanoid")
+    if not camera or not ownHumanoid or ownHumanoid.Health <= 0 then return end
+
+    local best, bestDistance
+    local center = camera.ViewportSize / 2
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    params.FilterDescendantsInstances = { ownCharacter }
+    for _, candidate in ipairs(Players:GetPlayers()) do
+        if candidate ~= localPlayer and (not state.teamCheck or not sameTeam(candidate)) then
+            local character = candidate.Character
+            local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+            local head = character and character:FindFirstChild("Head")
+            if humanoid and humanoid.Health > 0 and head and head:IsA("BasePart") then
+                local projected, onScreen = camera:WorldToViewportPoint(head.Position)
+                local dx, dy = projected.X - center.X, projected.Y - center.Y
+                local distance = math.sqrt(dx * dx + dy * dy)
+                if onScreen and projected.Z > 0 and distance <= state.aimRadius
+                    and (not bestDistance or distance < bestDistance) then
+                    local origin = camera.CFrame.Position
+                    local hit = Workspace:Raycast(origin, head.Position - origin, params)
+                    if not hit or hit.Instance:IsDescendantOf(character) then
+                        best, bestDistance = head, distance
+                    end
+                end
+            end
+        end
+    end
+    if not best then return end
+
+    local click = type(mouse1click) == "function" and mouse1click or nil
+    local tool = ownCharacter:FindFirstChildOfClass("Tool")
+    if not click and not tool then
+        if not fireWarning then
+            fireWarning = true
+            window:Notify({ title = "Auto disparo", content = "Sin arma Tool ni mouse1click compatible.", duration = 5 })
+        end
+        return
+    end
+    fireWarning = false
+    camera.CFrame = CFrame.lookAt(camera.CFrame.Position, best.Position)
+    local fired, err = pcall(function()
+        if click then click() else tool:Activate() end
+    end)
+    if not fired then
+        warn("Hola Hub: no se pudo disparar: " .. tostring(err))
+    end
 end
 
 local function updatePlayer(player)
@@ -179,6 +243,24 @@ hitboxTab:CreateToggle({ name = "Activar expansor", value = false, callback = fu
 hitboxTab:CreateSlider({ name = "Tamaño", range = { 2, 30 }, increment = 1, value = 8, suffix = " studs", callback = function(v) state.size = v end })
 hitboxTab:CreateSlider({ name = "Transparencia", range = { 0, 1 }, increment = 0.1, value = 0.7, callback = function(v) state.transparency = v end })
 
+local combatTab = window:CreateTab({ name = "Combate" })
+combatTab:CreateSection({ name = "Sniper Arena · experimental" })
+local autoFireToggle = combatTab:CreateToggle({
+    name = "Auto disparo",
+    description = "Apunta y dispara a enemigos visibles; necesita un método de disparo compatible.",
+    value = false,
+    callback = function(value)
+        if value and game.PlaceId ~= 122446657157717 then
+            window:Notify({ title = "Auto disparo", content = "Solo funciona en Sniper Arena.", duration = 4 })
+        end
+        state.autoFire = value
+        lastFire = 0
+        fireWarning = false
+    end,
+})
+combatTab:CreateSlider({ name = "Radio de mira", range = { 50, 600 }, increment = 10, value = 250, suffix = " px", callback = function(v) state.aimRadius = v end })
+combatTab:CreateSlider({ name = "Intervalo de disparo", range = { 0.2, 2 }, increment = 0.1, value = 0.5, suffix = " s", callback = function(v) state.autoFireInterval = v end })
+
 local settingsTab = window:CreateTab({ name = "Opciones" })
 settingsTab:CreateButton({ name = "Cerrar y restaurar", callback = cleanup })
 
@@ -186,6 +268,15 @@ removalConnection = Players.PlayerRemoving:Connect(clearEntry)
 local elapsed = 0
 updateConnection = RunService.Heartbeat:Connect(function(dt)
     if window.unloaded then cleanup(); return end
+    if state.autoFire then
+        local success, err = pcall(autoFireTick, dt)
+        if not success then
+            state.autoFire = false
+            autoFireToggle:Set(false)
+            warn("Hola Hub: auto disparo detenido: " .. tostring(err))
+            window:Notify({ title = "Auto disparo", content = "Error; revisa la consola del executor.", duration = 5 })
+        end
+    end
     elapsed = elapsed + dt
     if elapsed < 0.2 then return end
     elapsed = 0

@@ -16,10 +16,13 @@ local function signal()
 end
 
 local Vector3 = {}
-function Vector3.new(x, y, z) return { X = x, Y = y, Z = z } end
+local vectorMeta = { __sub = function(a, b) return Vector3.new(a.X - b.X, a.Y - b.Y, a.Z - b.Z) end }
+function Vector3.new(x, y, z) return setmetatable({ X = x, Y = y, Z = z }, vectorMeta) end
+local RaycastParams = { new = function() return {} end }
+local CFrame = { lookAt = function(position, target) return { Position = position, target = target } end }
 local Color3 = { fromRGB = function(r, g, b) return { r, g, b } end }
 local UDim2 = { fromOffset = function() return {} end, fromScale = function() return {} end }
-local Enum = { HighlightDepthMode = { AlwaysOnTop = 1 }, Font = { GothamBold = 1 } }
+local Enum = { HighlightDepthMode = { AlwaysOnTop = 1 }, Font = { GothamBold = 1 }, RaycastFilterType = { Exclude = 1 } }
 local instances = {}
 local Instance = {}
 function Instance.new(class)
@@ -58,8 +61,16 @@ local target = { Name = "Target", DisplayName = "Target", Neutral = false, Team 
 local players = { LocalPlayer = own, PlayerRemoving = removing }
 function players:GetPlayers() return { own, target } end
 local runService = { Heartbeat = heartbeat }
-local game = {}
-function game:GetService(name) return name == "Players" and players or runService end
+local camera = { CFrame = { Position = Vector3.new(0, 0, 0) }, ViewportSize = setmetatable({ X = 800, Y = 600 }, { __div = function(v, n) return { X = v.X / n, Y = v.Y / n } end }) }
+function camera:WorldToViewportPoint() return { X = 400, Y = 300, Z = 10 }, true end
+local world = { CurrentCamera = camera, blocked = false }
+function world:Raycast() if self.blocked then return { Instance = { IsDescendantOf = function() return false end } } end end
+local game = { PlaceId = 122446657157717 }
+function game:GetService(name)
+    if name == "Players" then return players end
+    if name == "Workspace" then return world end
+    return runService
+end
 function game:HttpGet(url) assert(url == "https://sirius.menu/gen2"); return "rayfield" end
 local function runHub()
 -- INSERT_SOURCE_HERE
@@ -85,7 +96,40 @@ assert(highlight.destroyed)
 target.Team = "blue"
 heartbeat:Fire(0.2)
 assert(root.Size.X == 12)
+
+local head = { Position = Vector3.new(1, 2, 20), IsA = function(_, name) return name == "BasePart" end }
+function character:FindFirstChild(name)
+    if name == "Head" then return head end
+    if name == "HumanoidRootPart" then return root end
+end
+local shots = 0
+local tool = { Activate = function() shots = shots + 1 end }
+own.Character = {
+    FindFirstChildOfClass = function(_, name)
+        if name == "Humanoid" then return { Health = 100 } end
+        if name == "Tool" then return tool end
+    end,
+    FindFirstChild = function() return nil end,
+}
+controls["Auto disparo"](true)
+heartbeat:Fire(0.5)
+assert(shots == 1 and camera.CFrame.target == head.Position)
+world.blocked = true
+heartbeat:Fire(0.5)
+assert(shots == 1)
+world.blocked = false
+target.Team = "red"
+heartbeat:Fire(0.5)
+assert(shots == 1)
+target.Team = "blue"
+game.PlaceId = 1
+heartbeat:Fire(0.5)
+assert(shots == 1)
+game.PlaceId = 122446657157717
+controls["Auto disparo"](false)
+heartbeat:Fire(0.5)
+assert(shots == 1)
 controls["Cerrar y restaurar"]()
 assert(root.Size.X == 2 and root.Transparency == 1 and root.CanCollide == true)
 assert(window.unloaded and globals.HolaHubUnload == nil)
-print("OK: ESP, hitbox, filtro de equipo y restauración")
+print("OK: ESP, hitbox, auto disparo, obstáculos, equipos y restauración")

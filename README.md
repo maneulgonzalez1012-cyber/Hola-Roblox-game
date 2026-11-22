@@ -7,6 +7,7 @@ Script de cliente para executor con **Rayfield Gen 2**, ESP de jugadores y expan
 - ESP mediante `Highlight` a través de paredes; nombres y distancia opcionales; color configurable.
 - Filtro de equipo compartido por ESP y hitbox, activado por defecto. Los jugadores neutrales no se consideran compañeros automáticamente.
 - Expansión local del `HumanoidRootPart`, con tamaño y transparencia configurables. Al desactivarla, cambiar de equipo, reaparecer o cerrar, se restauran las propiedades originales capturadas.
+- **Combate → Auto disparo (experimental)** para Sniper Arena (place ID `122446657157717`): selecciona un enemigo visible cerca del centro de la pantalla, apunta la cámara y prueba un clic (`mouse1click`) o activa la `Tool` equipada. Tiene intervalo y radio configurables y respeta el filtro de equipo. No modifica remotes ni garantiza disparos o eliminaciones; puede no ser compatible con el arma o executor del juego, especialmente en móvil.
 - El botón **Cerrar y restaurar** desconecta el script y elimina sus objetos. Si el executor proporciona `getgenv`, ejecutar de nuevo el script cierra la instancia anterior.
 
 La hitbox se modifica **solo en el cliente**: si el servidor valida los impactos u otros scripts cambian estas propiedades, puede no tener efecto o interferir. El script no se ha probado dentro de Roblox; la compatibilidad depende del juego y del executor.
@@ -42,7 +43,7 @@ OBSCURA_CLI=/ruta/obscura/packages/cli/dist/cli.js OBSCURA_NATIVE_BIN=/ruta/luau
 LUAU=/ruta/luau/build/luau python3 tools/test_obfuscation.py
 ```
 
-La prueba ejecuta ambas variantes en Luau con objetos simulados: verifica ESP, hitbox, filtro de equipo y restauración. No sustituye una prueba en Roblox con un executor.
+La prueba ejecuta ambas variantes en Luau con objetos simulados: verifica ESP, hitbox, auto disparo, obstáculos, filtro de equipo y restauración. No sustituye una prueba en Roblox con un executor.
 
 Si tu executor admite `readfile`, puedes guardar el archivo como `HolaHub.client.lua` en su carpeta de archivos y usar:
 
