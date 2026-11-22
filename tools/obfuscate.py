@@ -11,13 +11,14 @@ arguments = argparse.ArgumentParser()
 group = arguments.add_mutually_exclusive_group()
 group.add_argument("--break-in", action="store_true", help="Build Break In with Prometheus")
 group.add_argument("--players", action="store_true", help="Build VANTA Players with Prometheus")
+group.add_argument("--builder", action="store_true", help="Build Frontlines Builder with Prometheus")
 choice = arguments.parse_args()
-if choice.break_in or choice.players:
+if choice.break_in or choice.players or choice.builder:
     prometheus = os.environ.get("PROMETHEUS_DIR")
     luajit = os.environ.get("LUAJIT")
     if not prometheus or not luajit:
         sys.exit("Set PROMETHEUS_DIR and LUAJIT; see README.md for setup.")
-    stem = "BreakIn" if choice.break_in else "VantaPlayers"
+    stem = "BreakIn" if choice.break_in else "VantaPlayers" if choice.players else "FrontlinesBuilder"
     output = root / ("src/" + stem + ".obfuscated.lua")
     subprocess.run([
         luajit, str(Path(prometheus) / "cli.lua"),

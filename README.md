@@ -1,5 +1,24 @@
 # Scripts Roblox
 
+## VANTA Builder — Frontlines
+
+Script separado basado únicamente en el ejemplo de remote facilitado por el usuario: `ReplicatedStorage.BuildingSystem.Libraries.Grid.AddGridObject`, con identificador predeterminado `Wall$180$0` y coordenadas de rejilla `(7, -1, -1)`. Puedes introducir otras coordenadas enteras o un identificador exacto obtenido del mismo juego, enviar una pieza o solicitar una fila de hasta diez posiciones consecutivas en X, Y o Z (cada 0,5 s). La fila puede detenerse; cerrar el hub también cancela las solicitudes pendientes. No se han deducido otros IDs ni el significado de las secciones del identificador.
+
+Las coordenadas son las enviadas al remote, **no necesariamente posiciones del mundo en studs**; no existe conversión de ratón a rejilla, porque no se conoce su escala ni origen en ese juego. Los espacios, conexiones, inventario, recursos y demás validaciones dependen del servidor. Enviar una solicitud no confirma que la pieza se haya construido. No se ha verificado el remote ni probado el script dentro de Frontlines, y puede haber cambiado o no existir en una versión determinada. El script busca el remote de forma segura, sin limitar el ID del juego, pues no se ha confirmado a qué experiencia corresponde el ejemplo.
+
+```lua
+loadstring(game:HttpGet("https://raw.githubusercontent.com/maneulgonzalez1012-cyber/Hola-Roblox-game/arena/24653128-hola-roblox-game/src/FrontlinesBuilder.obfuscated.lua"))()
+```
+
+La distribución usa Prometheus (VM, cadenas, flujo y expresiones), **no Luarmor**. Based on Prometheus by Elias Oelschner, https://github.com/prometheus-lua/Prometheus ([licencia](licenses/Prometheus-LICENSE.txt)). El código legible sigue público, por lo que no hay secreto. Con las dependencias de la sección Break In:
+
+```sh
+PROMETHEUS_DIR=/ruta/Prometheus LUAJIT=/ruta/LuaJIT/src/luajit python3 tools/obfuscate.py --builder
+LUA=/ruta/luau/build/luau python3 tools/test_builder.py
+```
+
+La prueba ejecuta fuente y distribución con mocks, no es una prueba en Roblox.
+
 ## VANTA Players — hitbox + ESP
 
 Hub independiente para jugadores, con Rayfield Gen 2. El **hitbox expander** modifica localmente el tamaño, transparencia y colisión del `HumanoidRootPart` de otros jugadores; tiene tamaño ajustable de 2 a 30 studs. El **ESP** muestra un resaltado a través de paredes, nombre, vida y distancia. Ambos empiezan desactivados. El filtro de equipo excluye compañeros no neutrales por defecto; la distancia máxima es ajustable entre 50 y 2000 studs. Al desactivar, cerrar o cambiar de objetivo, se restauran las propiedades guardadas y se eliminan los marcadores. Si el executor permite `getgenv`, volver a ejecutar limpia la instancia anterior.
