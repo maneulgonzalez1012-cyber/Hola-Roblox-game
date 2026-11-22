@@ -2,6 +2,7 @@
 -- Los nombres de eventos provienen de ejemplos de la comunidad y pueden cambiar.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
@@ -28,11 +29,26 @@ local state = {
     range = 30,
     interval = 0.5,
     item = "Apple",
+    autoHeal = false,
+    healThreshold = 60,
+    healInterval = 3,
+    healElapsed = 0,
+    speedOn = false,
+    speed = 24,
+    jumpOn = false,
+    jumpPower = 75,
+    infiniteJump = false,
 }
 local running = true
 local connection
+local jumpConnection
 local elapsed = 0
 local warning = false
+local healWarning = false
+local movementHumanoid
+local originalSpeed
+local originalJump
+local originalUseJumpPower
 local folder = Instance.new("Folder")
 folder.Name = "BreakInHubVisuals"
 folder.Parent = player:WaitForChild("PlayerGui")
@@ -44,6 +60,48 @@ end
 
 local function inGame()
     return game.GameId == 1318971886 or game.PlaceId == 3851622790
+end
+
+local function restoreMovement()
+    if movementHumanoid then
+        pcall(function()
+            if originalSpeed ~= nil then movementHumanoid.WalkSpeed = originalSpeed end
+            if originalJump ~= nil then
+                movementHumanoid.JumpPower = originalJump
+                movementHumanoid.UseJumpPower = originalUseJumpPower
+            end
+        end)
+    end
+    movementHumanoid, originalSpeed, originalJump, originalUseJumpPower = nil, nil, nil, nil
+end
+
+local function syncMovement()
+    local character = inGame() and player.Character
+    local current = character and character:FindFirstChildOfClass("Humanoid")
+    if current ~= movementHumanoid then
+        restoreMovement()
+        movementHumanoid = current
+    end
+    if not movementHumanoid then return end
+    if state.speedOn then
+        if originalSpeed == nil then originalSpeed = movementHumanoid.WalkSpeed end
+        movementHumanoid.WalkSpeed = state.speed
+    elseif originalSpeed ~= nil then
+        movementHumanoid.WalkSpeed = originalSpeed
+        originalSpeed = nil
+    end
+    if state.jumpOn then
+        if originalJump == nil then
+            originalJump = movementHumanoid.JumpPower
+            originalUseJumpPower = movementHumanoid.UseJumpPower
+        end
+        movementHumanoid.UseJumpPower = true
+        movementHumanoid.JumpPower = state.jumpPower
+    elseif originalJump ~= nil then
+        movementHumanoid.JumpPower = originalJump
+        movementHumanoid.UseJumpPower = originalUseJumpPower
+        originalJump, originalUseJumpPower = nil, nil
+    end
 end
 
 local function getRemote(name)
@@ -134,6 +192,8 @@ local function cleanup()
     if not running then return end
     running = false
     if connection then connection:Disconnect() end
+    if jumpConnection then jumpConnection:Disconnect() end
+    restoreMovement()
     for enemy in pairs(markers) do removeMarker(enemy) end
     folder:Destroy()
     if not window.unloaded then pcall(function() window:Unload() end) end
@@ -154,10 +214,33 @@ combat:CreateSlider({ name = "Intervalo de ataque", range = { 0.2, 2 }, incremen
 combat:CreateToggle({ name = "Resaltar enemigos", value = false, callback = function(v) state.enemyESP = v end })
 
 local items = window:CreateTab({ name = "Objetos" })
-items:CreateDropdown({ name = "Objeto", options = { "Apple", "Cookie", "Chips", "BloxyCola", "Pizza3", "MedKit", "Bat", "Plank", "Key", "TeddyBloxpin" }, value = "Apple", callback = function(v) if v then state.item = v end end })
+items:CreateDropdown({ name = "Objeto", options = { "Apple", "Cookie", "Chips", "BloxyCola", "Pizza", "Pizza2", "Pizza3", "EpicPizza", "MedKit", "Bat", "Plank", "Key", "TeddyBloxpin", "Lollipop", "Cure", "LinkedSword", "Sword", "Gun", "Pan", "Pie" }, value = "Apple", callback = function(v) if v then state.item = v end end })
 items:CreateButton({ name = "Solicitar objeto", callback = function() action("GiveTool", state.item) end })
 items:CreateButton({ name = "Solicitar energía", description = "Usa el evento Cat documentado por la comunidad.", callback = function() action("Energy", "Cat") end })
 items:CreateButton({ name = "Intentar amistad con el gato", callback = function() action("Cattery") end })
+items:CreateButton({ name = "Solicitar paquete de cola", callback = function() action("BloxyPack", 1) end })
+items:CreateButton({ name = "Solicitar sartén de tienda", callback = function() action("BuyItem", "Pan", 0) end })
+items:CreateButton({ name = "Solicitar martillo del sótano", callback = function() action("BasementWeapon", true, "Hammer") end })
+items:CreateButton({ name = "Solicitar rol policía", description = "Ejemplo comunitario para el lobby.", callback = function() action("OutsideRole", "Gun", true) end })
+items:CreateButton({ name = "Solicitar rol SWAT", description = "Ejemplo comunitario para el lobby.", callback = function() action("OutsideRole", "SwatGun", true) end })
+items:CreateButton({ name = "Intentar curarme con botiquín", description = "Equipa un MedKit; el servidor decide.", callback = function() action("HealPlayer", player) end })
+items:CreateButton({ name = "Intentar curar a todos", description = "Una solicitud por jugador; equipa un MedKit.", callback = function()
+    if not inGame() then notify("Curación", "Entra en Break In (Story)."); return end
+    local count = 0
+    for _, target in ipairs(Players:GetPlayers()) do
+        local success, err = sendRemote("HealPlayer", target)
+        if not success then notify("Curación", err); return end
+        count = count + 1
+    end
+    notify("Curación", "Solicitudes enviadas: " .. tostring(count) .. "; depende del servidor.")
+end })
+items:CreateToggle({ name = "Auto energía", description = "Solicita Cat al bajar del porcentaje; depende del servidor.", value = false, callback = function(v)
+    state.autoHeal = v
+    state.healElapsed = 0
+    healWarning = false
+end })
+items:CreateSlider({ name = "Umbral de energía", range = { 10, 100 }, increment = 5, value = 60, suffix = "%", callback = function(v) state.healThreshold = v end })
+items:CreateSlider({ name = "Intervalo de energía", range = { 3, 30 }, increment = 1, value = 3, suffix = " s", callback = function(v) state.healInterval = v end })
 
 local story = window:CreateTab({ name = "Historia" })
 local function safeCode()
@@ -178,11 +261,28 @@ story:CreateButton({ name = "Solicitar apertura de caja", callback = function()
     action("Safe", code)
 end })
 
+story:CreateButton({ name = "Solicitar desbloqueo de puerta", callback = function() action("UnlockDoor") end })
+story:CreateButton({ name = "Solicitar diálogo 244", description = "Evento histórico de la comunidad.", callback = function() action("DoDialogue", 244, true) end })
+
+local movement = window:CreateTab({ name = "Movimiento" })
+movement:CreateToggle({ name = "Velocidad personalizada", value = false, callback = function(v) state.speedOn = v; syncMovement() end })
+movement:CreateSlider({ name = "Velocidad", range = { 16, 100 }, increment = 1, value = 24, suffix = " studs/s", callback = function(v) state.speed = v; syncMovement() end })
+movement:CreateToggle({ name = "Salto personalizado", value = false, callback = function(v) state.jumpOn = v; syncMovement() end })
+movement:CreateSlider({ name = "Potencia de salto", range = { 50, 200 }, increment = 5, value = 75, callback = function(v) state.jumpPower = v; syncMovement() end })
+movement:CreateToggle({ name = "Salto infinito", value = false, callback = function(v) state.infiniteJump = v end })
+jumpConnection = UserInputService.JumpRequest:Connect(function()
+    if not running or not state.infiniteJump or not inGame() then return end
+    local character = player.Character
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+    if humanoid and humanoid.Health > 0 then humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end
+end)
+
 local locations = {
     { "Casa", -36, 3, -200 },
     { "Sótano", 71, -15, -163 },
     { "Ático", -16, 35, -220 },
     { "Tienda", -422, 3, -121 },
+    { "Alcantarilla", 129, 3, -125 },
     { "Sala del jefe", -39, -287, -1480 },
 }
 local travel = window:CreateTab({ name = "Viaje" })
@@ -205,7 +305,21 @@ connection = RunService.Heartbeat:Connect(function(dt)
     if elapsed < 0.2 then return end
     local delta = elapsed
     elapsed = 0
-    if not inGame() then updateVisuals({}); return end
+    if not inGame() then restoreMovement(); updateVisuals({}); return end
+    syncMovement()
+    if state.autoHeal then
+        state.healElapsed = state.healElapsed + delta
+        if state.healElapsed >= state.healInterval then
+            state.healElapsed = 0
+            local character = player.Character
+            local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+            if humanoid and humanoid.Health > 0 and humanoid.MaxHealth > 0 and humanoid.Health / humanoid.MaxHealth * 100 <= state.healThreshold then
+                local success, err = sendRemote("Energy", "Cat")
+                if not success and not healWarning then healWarning = true; notify("Auto energía", err) end
+                if success then healWarning = false end
+            end
+        end
+    end
     local list = enemies()
     updateVisuals(list)
     if not state.attack then return end

@@ -14,7 +14,7 @@ local vec = {}
 vec.__sub = function(a, b) return setmetatable({ x = a.x-b.x, y = a.y-b.y, z = a.z-b.z }, vec) end
 vec.__index = function(v, k) if k == "Magnitude" then return math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z) end end
 local function position(x,y,z) return setmetatable({x=x,y=y,z=z},vec) end
-local Enum = { HighlightDepthMode = { AlwaysOnTop = 1 } }
+local Enum = { HighlightDepthMode = { AlwaysOnTop = 1 }, HumanoidStateType = { Jumping = "Jumping" } }
 local Color3 = { fromRGB = function(r,g,b) return {r,g,b} end }
 local CFrame = { new = function(x,y,z) return {x=x,y=y,z=z} end }
 local Instance = {}
@@ -42,7 +42,16 @@ local globals = {}
 local getgenv = function() return globals end
 local root = { Position = position(0,0,0) }
 function root:IsA(n) return n == "BasePart" end
-local humanoid = { Health = 100 }
+local humanoid = { Health = 100, MaxHealth = 100, WalkSpeed = 16, JumpPower = 50, UseJumpPower = false }
+function humanoid:ChangeState(state) self.lastState = state end
+local jump = { callbacks = {} }
+function jump:Connect(fn)
+    local c = { active = true }
+    function c:Disconnect() self.active = false end
+    table.insert(self.callbacks, { fn = fn, connection = c })
+    return c
+end
+function jump:Fire() for _, v in ipairs(self.callbacks) do if v.connection.active then v.fn() end end end
 local character = {}
 function character:FindFirstChild(n) if n == "HumanoidRootPart" then return root end end
 function character:FindFirstChildOfClass(n) if n == "Humanoid" then return humanoid end end
@@ -70,10 +79,14 @@ function events:FindFirstChild(name)
         FireServer = function(_, ...) table.insert(requests,{name=name,args={...}}) end }
 end
 local storage = { FindFirstChild = function(_,n) if n == "RemoteEvents" then return events end end }
+local other = { Name = "Other" }
+local players = { LocalPlayer = player }
+function players:GetPlayers() return { player, other } end
 local game = { GameId = 1318971886, PlaceId = 3851622790 }
 function game:GetService(name)
-    if name == "Players" then return { LocalPlayer = player } end
+    if name == "Players" then return players end
     if name == "RunService" then return { Heartbeat = heartbeat } end
+    if name == "UserInputService" then return { JumpRequest = jump } end
     if name == "ReplicatedStorage" then return storage end
     if name == "Workspace" then return world end
     error(name)
@@ -129,10 +142,57 @@ player.Character = character
 callbacks["Auto ataque"](false)
 heartbeat:Fire(1)
 assert(#requests == 4)
+requests = {}
+local function expect(button, name, ...)
+    local previous = #requests
+    callbacks[button]()
+    assert(#requests == previous + 1 and requests[#requests].name == name, button)
+    local args = {...}
+    for i, v in ipairs(args) do assert(requests[#requests].args[i] == v, button .. " arg " .. i) end
+end
+for _, item in ipairs({ "Pizza", "Pizza2", "Pizza3", "EpicPizza", "Cure", "LinkedSword", "Lollipop", "Sword", "Gun", "Pan", "Pie" }) do
+    callbacks["Objeto"](item); expect("Solicitar objeto", "GiveTool", item)
+end
+expect("Solicitar energía", "Energy", "Cat")
+expect("Intentar amistad con el gato", "Cattery")
+expect("Solicitar paquete de cola", "BloxyPack", 1)
+expect("Solicitar sartén de tienda", "BuyItem", "Pan", 0)
+expect("Solicitar martillo del sótano", "BasementWeapon", true, "Hammer")
+expect("Solicitar rol policía", "OutsideRole", "Gun", true)
+expect("Solicitar rol SWAT", "OutsideRole", "SwatGun", true)
+expect("Intentar curarme con botiquín", "HealPlayer", player)
+expect("Solicitar desbloqueo de puerta", "UnlockDoor")
+expect("Solicitar diálogo 244", "DoDialogue", 244, true)
+local before = #requests
+callbacks["Intentar curar a todos"]()
+assert(#requests == before + 2 and requests[before+1].args[1] == player and requests[before+2].args[1] == other)
+callbacks["Alcantarilla"](); assert(root.CFrame.x == 129 and root.CFrame.z == -125)
+callbacks["Velocidad personalizada"](true); callbacks["Velocidad"](42)
+callbacks["Salto personalizado"](true); callbacks["Potencia de salto"](100)
+assert(humanoid.WalkSpeed == 42 and humanoid.JumpPower == 100 and humanoid.UseJumpPower)
+callbacks["Salto infinito"](true); jump:Fire(); assert(humanoid.lastState == "Jumping")
+callbacks["Velocidad personalizada"](false); callbacks["Salto personalizado"](false)
+assert(humanoid.WalkSpeed == 16 and humanoid.JumpPower == 50 and humanoid.UseJumpPower == false)
+callbacks["Auto energía"](true); humanoid.Health = 50
+before = #requests
+heartbeat:Fire(2); assert(#requests == before)
+heartbeat:Fire(1); assert(#requests == before + 1 and requests[#requests].name == "Energy" and requests[#requests].args[1] == "Cat")
+humanoid.Health = 100; heartbeat:Fire(3); assert(#requests == before + 1)
+humanoid.Health = 50; events.unavailable = true
+local lastMessages = #messages
+heartbeat:Fire(3); heartbeat:Fire(3); assert(#messages == lastMessages + 1 and #requests == before + 1)
+events.unavailable = false; callbacks["Auto energía"](false)
+callbacks["Velocidad personalizada"](true); callbacks["Salto personalizado"](true)
 game.GameId = 1; game.PlaceId = 1
-callbacks["Solicitar objeto"](); heartbeat:Fire(1)
-assert(#requests == 4)
+before = #requests
+callbacks["Solicitar objeto"](); callbacks["Intentar curar a todos"](); heartbeat:Fire(3)
+assert(#requests == before and humanoid.WalkSpeed == 16 and humanoid.JumpPower == 50)
+humanoid.lastState = nil; jump:Fire(); assert(humanoid.lastState == nil)
+game.GameId = 1318971886; game.PlaceId = 3851622790
+heartbeat:Fire(0.2); assert(humanoid.WalkSpeed == 42 and humanoid.JumpPower == 100)
 callbacks["Cerrar y limpiar"]()
 assert(window.unloaded and visuals[1].destroyed and globals.BreakInHubUnload == nil)
-heartbeat:Fire(1); assert(#requests == 4)
-print("OK: combate, alcance, objetos, caja, errores y limpieza")
+assert(humanoid.WalkSpeed == 16 and humanoid.JumpPower == 50 and not humanoid.UseJumpPower)
+humanoid.lastState = nil; jump:Fire(); assert(humanoid.lastState == nil)
+heartbeat:Fire(3); assert(#requests == before)
+print("OK: combate, remotes, curación, movimiento, guardas y limpieza")
