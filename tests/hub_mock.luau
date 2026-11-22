@@ -1,165 +1,133 @@
--- Test fixture: tools/test_obfuscation.py inserts the script into runHub below.
+-- Se inserta el script original u ofuscado en runHub para probar con mocks Luau.
 local function signal()
-    local event = { listeners = {} }
-    function event:Connect(fn)
-        local connection = { connected = true }
-        function connection:Disconnect() self.connected = false end
-        table.insert(self.listeners, { fn = fn, connection = connection })
-        return connection
+    local e = { listeners = {} }
+    function e:Connect(fn)
+        local c = { connected = true }
+        function c:Disconnect() self.connected = false end
+        table.insert(self.listeners, { callback = fn, connection = c })
+        return c
     end
-    function event:Fire(...)
-        for _, listener in ipairs(self.listeners) do
-            if listener.connection.connected then listener.fn(...) end
+    function e:Fire(...)
+        for _, entry in ipairs(self.listeners) do
+            if entry.connection.connected then entry.callback(...) end
         end
     end
-    return event
+    return e
 end
-
 local Vector3 = {}
-local vectorMeta = { __sub = function(a, b) return Vector3.new(a.X - b.X, a.Y - b.Y, a.Z - b.Z) end }
-function Vector3.new(x, y, z) return setmetatable({ X = x, Y = y, Z = z }, vectorMeta) end
-local RaycastParams = { new = function() return {} end }
-local CFrame = { lookAt = function(position, target) return { Position = position, target = target } end }
-local Color3 = { fromRGB = function(r, g, b) return { r, g, b } end }
-local UDim2 = { fromOffset = function() return {} end, fromScale = function() return {} end }
-local Enum = { HighlightDepthMode = { AlwaysOnTop = 1 }, Font = { GothamBold = 1 }, RaycastFilterType = { Exclude = 1 } }
-local instances = {}
+local vectorMeta = {}
+vectorMeta.__sub = function(a, b) return Vector3.new(a.X-b.X, a.Y-b.Y, a.Z-b.Z) end
+vectorMeta.__index = function(v, k)
+    if k == "Magnitude" then return math.sqrt(v.X*v.X + v.Y*v.Y + v.Z*v.Z) end
+    if k == "Unit" then local n = v.Magnitude; return Vector3.new(v.X/n, v.Y/n, v.Z/n) end
+    if k == "Dot" then return function(a,b) return a.X*b.X + a.Y*b.Y + a.Z*b.Z end end
+end
+function Vector3.new(x,y,z) return setmetatable({ X=x, Y=y, Z=z }, vectorMeta) end
+local Color3 = { fromRGB = function(r,g,b) return { r=r, g=g, b=b } end }
+local Enum = { HighlightDepthMode = { AlwaysOnTop = 1 } }
+local marker
 local Instance = {}
 function Instance.new(class)
-    local obj = { ClassName = class, Enabled = true }
-    function obj:Destroy() self.destroyed = true end
-    table.insert(instances, obj)
-    return obj
+    assert(class == "Highlight")
+    marker = {}
+    function marker:Destroy() self.destroyed = true end
+    return marker
 end
-local controls = {}
+local controls, messages = {}, {}
 local window = { unloaded = false }
-function window:CreateTab(props)
+function window:CreateTab()
     return {
         CreateSection = function() end,
-        CreateToggle = function(_, p) controls[p.name] = p.callback end,
-        CreateSlider = function(_, p) controls[p.name] = p.callback end,
-        CreateDropdown = function(_, p) controls[p.name] = p.callback end,
-        CreateColorPicker = function(_, p) controls[p.name] = p.callback end,
+        CreateToggle = function(_, p) controls[p.name] = p.callback; return {} end,
+        CreateSlider = function(_, p) controls[p.name] = p.callback; return {} end,
         CreateButton = function(_, p) controls[p.name] = p.callback end,
     }
 end
-function window:Notify() end
+function window:Notify(p) table.insert(messages, p) end
 function window:Unload() self.unloaded = true end
 local rayfield = { CreateWindow = function() return window end }
 local loadstring = function() return function() return rayfield end end
 local globals = {}
 local getgenv = function() return globals end
-local heartbeat, removing = signal(), signal()
-local own = { Neutral = false, Team = "red", Character = nil }
-function own:WaitForChild() return {} end
-local root = { Size = Vector3.new(2, 2, 1), Transparency = 1, CanCollide = true }
+local heartbeat = signal()
+local t = 1
+local os = { clock = function() return t end }
+local root = { Position = Vector3.new(0,0,0), AssemblyLinearVelocity = Vector3.new(0,0,0) }
 function root:IsA(name) return name == "BasePart" end
 local humanoid = { Health = 100 }
 local character = {}
-function character:FindFirstChildOfClass(name) return name == "Humanoid" and humanoid end
-function character:FindFirstChild(name) return name == "HumanoidRootPart" and root or nil end
-local target = { Name = "Target", DisplayName = "Target", Neutral = false, Team = "blue", Character = character }
-local players = { LocalPlayer = own, PlayerRemoving = removing }
-function players:GetPlayers() return { own, target } end
+function character:FindFirstChild(name) if name == "HumanoidRootPart" then return root end end
+function character:FindFirstChildOfClass(name) if name == "Humanoid" then return humanoid end end
+local player = { Name = "dj", Character = character }
+function player:WaitForChild(name) assert(name == "PlayerGui"); return {} end
+local ball = { Position = Vector3.new(0,0,100), AssemblyLinearVelocity = Vector3.new(0,0,-100), attrs = { realBall=true, target="other" } }
+function ball:IsA(name) return name == "BasePart" end
+function ball:GetAttribute(name) return self.attrs[name] end
+function ball:FindFirstChild() return nil end
+local folder = { children = {ball} }
+function folder:GetChildren() return self.children end
+local workspace = { FindFirstChild = function(_, name) if name == "Balls" then return folder end end }
+local parries = 0
+local button = { IsA = function(_, name) return name == "BindableEvent" end, Fire = function() parries = parries + 1 end }
+local remotes = { FindFirstChild = function(_, name) if name == "ParryButtonPress" then return button end end }
+local storage = { FindFirstChild = function(_, name) if name == "Remotes" then return remotes end end }
+local players = { LocalPlayer = player }
 local runService = { Heartbeat = heartbeat }
-local camera = { CFrame = { Position = Vector3.new(0, 0, 0) }, ViewportSize = setmetatable({ X = 800, Y = 600 }, { __div = function(v, n) return { X = v.X / n, Y = v.Y / n } end }) }
-function camera:WorldToViewportPoint() return { X = 400, Y = 300, Z = 10 }, true end
-local world = { CurrentCamera = camera, blocked = false }
-function world:Raycast() if self.blocked then return { Instance = { IsDescendantOf = function() return false end } } end end
-local requests = {}
-local remote = { IsA = function(_, name) return name == "RemoteEvent" end }
-function remote:FireServer(...) table.insert(requests, { ... }) end
-local events = { available = true }
-function events:FindFirstChild(name) if self.available and name == "orbEvent" then return remote end end
-local storage = { FindFirstChild = function(_, name) if name == "rEvents" then return events end end }
-local game = { PlaceId = 122446657157717 }
+local game = { GameId = 4777817887, PlaceId = 13772394625 }
 function game:GetService(name)
     if name == "Players" then return players end
-    if name == "Workspace" then return world end
+    if name == "RunService" then return runService end
+    if name == "Workspace" then return workspace end
     if name == "ReplicatedStorage" then return storage end
-    return runService
+    error("unsupported service " .. name)
 end
 function game:HttpGet(url) assert(url == "https://sirius.menu/gen2"); return "rayfield" end
 local function runHub()
 -- INSERT_SOURCE_HERE
 end
 runHub()
-assert(type(globals.HolaHubUnload) == "function")
-controls["Activar ESP"](true)
-heartbeat:Fire(0.2)
-local highlight
-for _, object in ipairs(instances) do
-    if object.ClassName == "Highlight" then highlight = object end
-end
-assert(highlight and highlight.Enabled and highlight.Adornee == character)
-controls["Activar expansor"](true)
-controls["Tamaño"](12)
-controls["Transparencia"](0.4)
-heartbeat:Fire(0.2)
-assert(root.Size.X == 12 and root.Size.Y == 12 and root.Transparency == 0.4 and root.CanCollide == false)
-target.Team = "red"
-heartbeat:Fire(0.2)
-assert(root.Size.X == 2 and root.Size.Z == 1 and root.Transparency == 1 and root.CanCollide == true)
-assert(highlight.destroyed)
-target.Team = "blue"
-heartbeat:Fire(0.2)
-assert(root.Size.X == 12)
-
-local head = { Position = Vector3.new(1, 2, 20), IsA = function(_, name) return name == "BasePart" end }
-function character:FindFirstChild(name)
-    if name == "Head" then return head end
-    if name == "HumanoidRootPart" then return root end
-end
-local shots = 0
-local tool = { Activate = function() shots = shots + 1 end }
-own.Character = {
-    FindFirstChildOfClass = function(_, name)
-        if name == "Humanoid" then return { Health = 100 } end
-        if name == "Tool" then return tool end
-    end,
-    FindFirstChild = function() return nil end,
-}
-controls["Auto disparo"](true)
-heartbeat:Fire(0.5)
-assert(shots == 1 and camera.CFrame.target == head.Position)
-world.blocked = true
-heartbeat:Fire(0.5)
-assert(shots == 1)
-world.blocked = false
-target.Team = "red"
-heartbeat:Fire(0.5)
-assert(shots == 1)
-target.Team = "blue"
-game.PlaceId = 1
-heartbeat:Fire(0.5)
-assert(shots == 1)
-game.PlaceId = 122446657157717
-controls["Auto disparo"](false)
-heartbeat:Fire(0.5)
-assert(shots == 1)
-
-controls["Auto orbes rojos"](true)
-controls["Auto gemas"](true)
-heartbeat:Fire(1)
-assert(#requests == 0) -- No requests outside Legends of Speed.
-game.PlaceId = 3101667897
-heartbeat:Fire(0.5)
-assert(#requests == 2 and requests[1][1] == "collectOrb" and requests[1][2] == "Red Orb" and requests[1][3] == "City")
-assert(requests[2][2] == "Gem" and requests[2][3] == "City")
-events.available = false
-heartbeat:Fire(0.5)
-assert(#requests == 2)
-events.available = true
-controls["Zona de recolección"]("Snow City")
-controls["Auto orbes rojos"](false)
-heartbeat:Fire(0.5)
-assert(#requests == 3 and requests[3][2] == "Gem" and requests[3][3] == "Snow City")
-controls["Auto gemas"](false)
-heartbeat:Fire(1)
-assert(#requests == 3)
-controls["Cerrar y restaurar"]()
-heartbeat:Fire(1)
-assert(#requests == 3)
-assert(root.Size.X == 2 and root.Transparency == 1 and root.CanCollide == true)
-assert(window.unloaded and globals.HolaHubUnload == nil)
-print("OK: ESP, hitbox, auto disparo, auto recolección, equipos y restauración")
+assert(type(globals.BladeBallUnload) == "function")
+controls["Auto parry"](true)
+controls["Resaltar pelota real"](true)
+heartbeat:Fire()
+assert(parries == 0 and marker.Adornee == ball and marker.Enabled and marker.FillColor.b == 255)
+ball.attrs.target = "dj"
+heartbeat:Fire() -- far away, time-to-impact is one second
+assert(parries == 0 and marker.FillColor.r == 255)
+ball.Position = Vector3.new(0,0,30)
+heartbeat:Fire()
+assert(parries == 1) -- within lead time
+heartbeat:Fire()
+assert(parries == 1) -- no repeated firing while same ball is incoming
+t = t + 0.6
+ball.AssemblyLinearVelocity = Vector3.new(0,0,100)
+heartbeat:Fire() -- moving away rearms only after departure
+assert(parries == 1)
+ball.AssemblyLinearVelocity = Vector3.new(0,0,-100)
+heartbeat:Fire()
+assert(parries == 2)
+ball.attrs.target = "other"
+heartbeat:Fire()
+t = t + 0.6
+ball.attrs.target = "dj"
+heartbeat:Fire()
+assert(parries == 3) -- target change rearms
+folder.children = {}
+heartbeat:Fire()
+assert(not marker.Enabled)
+folder.children = {ball}
+game.GameId = 1; game.PlaceId = 1
+t = t + 1
+heartbeat:Fire()
+assert(parries == 3 and not marker.Enabled)
+game.GameId = 4777817887
+controls["Auto parry"](false)
+heartbeat:Fire()
+assert(parries == 3)
+controls["Probar bloqueo"]()
+assert(parries == 4)
+controls["Cerrar y limpiar"]()
+assert(window.unloaded and marker.destroyed and globals.BladeBallUnload == nil)
+heartbeat:Fire()
+assert(parries == 4)
+print("OK: parry, velocidad, debounce, visualizador y limpieza")
