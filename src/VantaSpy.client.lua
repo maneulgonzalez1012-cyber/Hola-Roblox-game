@@ -73,6 +73,9 @@ local state = {
     logOrder = {},         -- { key1, key2, ... }
     selectedLogKey = nil,
     snapshotCounts = nil,  -- { [key] = count } para comparar Antes / Después
+    ignoredPaths = {},     -- { [path] = true }
+    blockedPaths = {},     -- { [path] = true }
+    lastGeneratedCode = "",
     connections = {},
 }
 
@@ -256,6 +259,9 @@ local function recordRemoteCall(self, method, packedArgs)
         return
     end
     local path = safeFullName(self)
+    if state.ignoredPaths[path] then
+        return
+    end
     local cls = safeClassName(self)
     local key = method .. " | " .. path
     local entry = state.logs[key]
@@ -268,12 +274,14 @@ local function recordRemoteCall(self, method, packedArgs)
         end
         entry = {
             key = key,
+            instance = self,
             method = method,
             className = cls,
             path = path,
             count = 0,
             lastTime = os.clock(),
             lastArgs = "",
+            lastPacked = nil,
         }
         state.logs[key] = entry
         table.insert(state.logOrder, key)
@@ -281,6 +289,23 @@ local function recordRemoteCall(self, method, packedArgs)
     entry.count = entry.count + 1
     entry.lastTime = os.clock()
     entry.lastArgs = serializeArgs(packedArgs)
+    entry.lastPacked = packedArgs
+end
+
+local function buildLuauSnippet(entry)
+    if not entry then
+        return ""
+    end
+    local packed = entry.lastPacked or { n = 0 }
+    local n = packed.n or #packed
+    if n == 0 then
+        return entry.path .. ":" .. entry.method .. "()"
+    end
+    local argLines = {}
+    for i = 1, n do
+        table.insert(argLines, "    [" .. tostring(i) .. "] = " .. serializeValue(packed[i], 0, {}))
+    end
+    return "local args = {\n" .. table.concat(argLines, ",\n") .. "\n}\n" .. entry.path .. ":" .. entry.method .. "(table.unpack(args, 1, " .. tostring(n) .. "))"
 end
 
 local function installHook()
@@ -297,6 +322,10 @@ local function installHook()
                 if method == "FireServer" or method == "InvokeServer" then
                     local packed = table.pack(...)
                     pcall(recordRemoteCall, self, method, packed)
+                    local path = safeFullName(self)
+                    if state.blockedPaths[path] then
+                        return nil
+                    end
                 end
             end
             return state.oldNamecall(self, ...)
@@ -533,6 +562,73 @@ SpyTab:CreateButton({
         state.snapshotCounts = nil
         state.selectedLogKey = nil
         refreshLogsUI()
+    end,
+})
+
+SpyTab:CreateButton({
+    Name = "Copiar código Luau",
+    Callback = function()
+        local entry = state.selectedLogKey and state.logs[state.selectedLogKey]
+        if not entry then
+            return
+        end
+        local code = buildLuauSnippet(entry)
+        state.lastGeneratedCode = code
+        if hasSetClipboard then
+            setclipboard(code)
+            Rayfield:Notify({ Title = "VANTA Spy", Content = "Código Luau copiado.", Duration = 3 })
+        end
+    end,
+})
+
+SpyTab:CreateButton({
+    Name = "Reproducir llamada",
+    Callback = function()
+        local entry = state.selectedLogKey and state.logs[state.selectedLogKey]
+        if not entry or not entry.instance then
+            return
+        end
+        local packed = entry.lastPacked or { n = 0 }
+        local n = packed.n or #packed
+        local ok, err = pcall(function()
+            local fn = entry.instance[entry.method]
+            if type(fn) == "function" then
+                fn(entry.instance, table.unpack(packed, 1, n))
+            end
+        end)
+        if not ok then
+            Rayfield:Notify({ Title = "VANTA Spy", Content = "Error al reproducir: " .. tostring(err), Duration = 3 })
+        end
+    end,
+})
+
+SpyTab:CreateButton({
+    Name = "Ignorar / Mostrar seleccionado",
+    Callback = function()
+        local entry = state.selectedLogKey and state.logs[state.selectedLogKey]
+        if not entry then
+            return
+        end
+        if state.ignoredPaths[entry.path] then
+            state.ignoredPaths[entry.path] = nil
+        else
+            state.ignoredPaths[entry.path] = true
+        end
+    end,
+})
+
+SpyTab:CreateButton({
+    Name = "Bloquear / Desbloquear seleccionado",
+    Callback = function()
+        local entry = state.selectedLogKey and state.logs[state.selectedLogKey]
+        if not entry then
+            return
+        end
+        if state.blockedPaths[entry.path] then
+            state.blockedPaths[entry.path] = nil
+        else
+            state.blockedPaths[entry.path] = true
+        end
     end,
 })
 

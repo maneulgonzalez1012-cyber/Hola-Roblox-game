@@ -42,6 +42,22 @@ env.__VANTA_TEST_SET_METHOD("FireServer")
 env.__VANTA_TEST_CALL(env.__VANTA_TEST_SELL, "diamond")
 assert(spyState.logs[sellKey].count == 3, "Expected count 3 after snapshot")
 
+-- 5b. SimpleSpy functions: select log, copy Luau code, ignore, block
+local logDd = uiState.dropdowns["Llamadas agrupadas"]
+logDd.Callback(sellKey)
+uiState.buttons["Copiar código Luau"]()
+assert(string.find(spyState.lastGeneratedCode, "SellItem:FireServer", 1, true), "Code generation failed")
+
+uiState.buttons["Bloquear / Desbloquear seleccionado"]()
+assert(spyState.blockedPaths["ReplicatedStorage.Remotes.SellItem"] == true, "Block toggle failed")
+uiState.buttons["Bloquear / Desbloquear seleccionado"]()
+assert(spyState.blockedPaths["ReplicatedStorage.Remotes.SellItem"] == nil, "Unblock toggle failed")
+
+uiState.buttons["Ignorar / Mostrar seleccionado"]()
+assert(spyState.ignoredPaths["ReplicatedStorage.Remotes.SellItem"] == true, "Ignore toggle failed")
+uiState.buttons["Ignorar / Mostrar seleccionado"]()
+assert(spyState.ignoredPaths["ReplicatedStorage.Remotes.SellItem"] == nil, "Unignore toggle failed")
+
 -- 6. Collapse / Expand GUI
 uiState.buttons["Contraer / Expandir GUI"]()
 assert(uiState.visible == false, "Expected GUI to collapse")
