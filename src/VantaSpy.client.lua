@@ -78,6 +78,7 @@ local state = {
     ignoredPaths = {},     -- { [path] = true }
     blockedPaths = {},     -- { [path] = true }
     lastGeneratedCode = "",
+    lastDecompiled = "",
     connections = {},
 }
 
@@ -253,7 +254,7 @@ local function getFilteredOrigins()
     return out
 end
 
-local function recordRemoteCall(self, method, packedArgs, returnPreview, callingScriptName)
+local function recordRemoteCall(self, method, packedArgs, returnPreview, callingScriptName, callingScriptInst)
     if state.destroyed or not state.capturing then
         return
     end
@@ -285,6 +286,7 @@ local function recordRemoteCall(self, method, packedArgs, returnPreview, calling
             lastArgs = "",
             lastReturn = "",
             lastCaller = "",
+            callerInstance = nil,
             lastPacked = nil,
         }
         state.logs[key] = entry
@@ -295,6 +297,7 @@ local function recordRemoteCall(self, method, packedArgs, returnPreview, calling
     entry.lastArgs = serializeArgs(packedArgs)
     entry.lastReturn = returnPreview or ""
     entry.lastCaller = callingScriptName or "?"
+    entry.callerInstance = callingScriptInst
     entry.lastPacked = packedArgs
 end
 
@@ -314,15 +317,15 @@ local function buildLuauSnippet(entry)
     return "local args = {\n" .. table.concat(argLines, ",\n") .. "\n}\n" .. entry.path .. ":" .. entry.method .. "(table.unpack(args, 1, " .. tostring(n) .. "))"
 end
 
-local function getCallerName()
+local function getCallerInfo()
     if not hasGetCallingScript then
-        return "?"
+        return "?", nil
     end
     local ok, scr = pcall(getcallingscript)
     if ok and scr then
-        return safeFullName(scr)
+        return safeFullName(scr), scr
     end
-    return "?"
+    return "?", nil
 end
 
 local function installHook()
@@ -338,18 +341,18 @@ local function installHook()
             if state.capturing and not state.destroyed then
                 if method == "FireServer" or method == "InvokeServer" then
                     local packed = table.pack(...)
-                    local caller = getCallerName()
+                    local caller, callerInst = getCallerInfo()
                     local path = safeFullName(self)
                     if state.blockedPaths[path] then
-                        pcall(recordRemoteCall, self, method, packed, "<bloqueado>", caller)
+                        pcall(recordRemoteCall, self, method, packed, "<bloqueado>", caller, callerInst)
                         return nil
                     end
                     if method == "InvokeServer" then
                         local rets = table.pack(state.oldNamecall(self, ...))
-                        pcall(recordRemoteCall, self, method, packed, serializeArgs(rets), caller)
+                        pcall(recordRemoteCall, self, method, packed, serializeArgs(rets), caller, callerInst)
                         return table.unpack(rets, 1, rets.n)
                     else
-                        pcall(recordRemoteCall, self, method, packed, "", caller)
+                        pcall(recordRemoteCall, self, method, packed, "", caller, callerInst)
                     end
                 end
             end
@@ -659,6 +662,33 @@ SpyTab:CreateButton({
 })
 
 SpyTab:CreateButton({
+    Name = "Descompilar Caller",
+    Callback = function()
+        local entry = state.selectedLogKey and state.logs[state.selectedLogKey]
+        if not entry or not entry.callerInstance then
+            Rayfield:Notify({ Title = "VANTA Spy", Content = "No hay script caller disponible para esta llamada.", Duration = 3 })
+            return
+        end
+        if not hasDecompile then
+            Rayfield:Notify({ Title = "VANTA Spy", Content = "decompile() no disponible en este executor.", Duration = 3 })
+            return
+        end
+        local ok, src = pcall(decompile, entry.callerInstance)
+        if ok and type(src) == "string" then
+            state.lastDecompiled = src
+            if hasSetClipboard then
+                setclipboard(src)
+                Rayfield:Notify({ Title = "VANTA Spy", Content = "Script descompilado y copiado al portapapeles.", Duration = 3 })
+            else
+                Rayfield:Notify({ Title = "VANTA Spy", Content = "Script descompilado (" .. tostring(#src) .. " chars).", Duration = 3 })
+            end
+        else
+            Rayfield:Notify({ Title = "VANTA Spy", Content = "Error al descompilar: " .. tostring(src), Duration = 3 })
+        end
+    end,
+})
+
+SpyTab:CreateButton({
     Name = "Limpiar ignorados",
     Callback = function()
         state.ignoredPaths = {}
@@ -684,6 +714,7 @@ DiagTab:CreateParagraph({
         "getcallingscript: " .. (hasGetCallingScript and "disponible" or "no disponible"),
         "checkcaller: " .. (hasCheckCaller and "disponible" or "no disponible"),
         "setclipboard: " .. (hasSetClipboard and "disponible" or "no disponible"),
+        "decompile: " .. (hasDecompile and "disponible" or "no disponible"),
         "getgc: " .. (hasGetGc and "disponible" or "no disponible"),
     }, "\n"),
 })
