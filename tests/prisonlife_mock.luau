@@ -13,11 +13,21 @@ local function signal()
         end,
     }
 end
-local controls, messages, visuals, calls = {}, {}, {}, {}
+local controls, messages, visuals, calls, dropdowns = {}, {}, {}, {}, {}
 local window = { unloaded = false }
 function window:CreateTab()
     return {
-        CreateDropdown = function(_, p) controls[p.name] = p.callback end,
+        CreateDropdown = function(_, p)
+            controls[p.name] = p.callback
+            local d = { options = p.options, selection = p.value }
+            function d:Refresh(options)
+                self.options = options
+                if self.selection and not table.find(options, self.selection) then self.selection = nil; p.callback(nil) end
+            end
+            function d:Select(value) self.selection = value; p.callback(value) end
+            dropdowns[p.name] = d
+            return d
+        end,
         CreateButton = function(_, p) controls[p.name] = p.callback end,
         CreateToggle = function(_, p) controls[p.name] = p.callback end,
         CreateSlider = function(_, p) controls[p.name] = p.callback end,
@@ -70,9 +80,9 @@ local me = { Name = "dj", Character = makeCharacter(), Team = "blue", Neutral = 
 function me:WaitForChild(n) assert(n == "PlayerGui"); return {} end
 local other = { Name = "other", Character = makeCharacter(), Team = "red", Neutral = false }
 function other:IsA(n) return n == "Player" end
-local players = { LocalPlayer = me, list = {me, other} }
+local players = { LocalPlayer = me, list = {me, other}, PlayerAdded = signal(), PlayerRemoving = signal() }
 function players:GetPlayers() return self.list end
-function players:FindFirstChild(n) if n == "other" then return other elseif n == "dj" then return me end end
+function players:FindFirstChild(n) for _, p in ipairs(self.list) do if p.Name == n then return p end end end
 local function rem(name, class)
     local r = { class = class }
     function r:IsA(n) return n == self.class end
@@ -91,19 +101,25 @@ local melee = rem("meleeEvent", "RemoteEvent")
 local remotes = { TeamEvent = team, ItemHandler = itemHandler, arrest = arrest }
 function remotes:FindFirstChild(n) return self[n] end
 local pickups = {}
-local function category(prefix)
-    return { FindFirstChild = function(_, n)
-        if n == "missing" then return nil end
-        local p = pickups[prefix .. n] or { Name = prefix .. n }
-        pickups[prefix .. n] = p
-        return { FindFirstChild = function(_, name) if name == "ITEMPICKUP" then return p end end }
-    end }
+local function category(prefix, names)
+    local children = {}
+    for _, name in ipairs(names) do
+        local p = { Name = prefix .. name }
+        pickups[prefix .. name] = p
+        local item = { Name = name }
+        function item:FindFirstChild(n) if n == "ITEMPICKUP" then return p end end
+        children[name] = item
+    end
+    return {
+        FindFirstChild = function(_, name) return children[name] end,
+        GetChildren = function() local list = {}; for _, v in pairs(children) do table.insert(list, v) end; return list end,
+    }
 end
-local cats = { giver = category("giver/"), single = category("single/") }
+local cats = { giver = category("giver/", { "M9", "MP5", "Remington 870", "AK-47", "NewGun" }), single = category("single/", { "Key card" }) }
 function cats:FindFirstChild(n) return self[n] end
 local world = {}
-function world:FindFirstChild(n) if n == "Remote" then return remotes elseif n == "Prison_ITEMS" then return cats end end
-local storage = { FindFirstChild = function(_, n) if n == "meleeEvent" then return melee end end }
+function world:FindFirstChild(n) if n == "Remote" then return remotes elseif n == "Prison_ITEMS" and not self.missingItems then return cats end end
+local storage = { FindFirstChild = function(self, n) if n == "meleeEvent" then return melee elseif n == "Remote" then return self.remote end end }
 local heartbeat, jump = signal(), signal()
 local game = { GameId = 73885730, PlaceId = 155615604 }
 function game:GetService(n)
@@ -126,11 +142,29 @@ controls["Objeto"]("Key card"); controls["Solicitar objeto"](); assert(calls[2].
 controls["Solicitar guardia"](); controls["Solicitar preso"](); controls["Solicitar neutral"]()
 assert(calls[3].arg == "Bright blue" and calls[4].arg == "Bright orange" and calls[5].arg == "Medium stone grey")
 controls["Patio"](); assert(me.Character.root.CFrame.X == 793.991333)
-controls["Nombre de usuario"]("other")
+assert(#dropdowns["Elegir jugador"].options == 1 and dropdowns["Elegir jugador"].options[1] == "other")
+dropdowns["Elegir jugador"]:Select("other")
 controls["Ir a jugador"](); assert(me.Character.root.CFrame == other.Character.root.CFrame)
 controls["Solicitar golpe"](); assert(calls[6].name == "meleeEvent" and calls[6].arg == other)
 controls["Solicitar arresto"](); assert(calls[7].name == "arrest" and calls[7].arg == other.Character.head)
-controls["Nombre de usuario"]("unknown"); controls["Solicitar golpe"](); assert(#calls == 7)
+local extra = { Name = "extra", Character = makeCharacter(), Team = "red", Neutral = false }
+function extra:IsA(n) return n == "Player" end
+table.insert(players.list, extra); players.PlayerAdded:Fire(extra)
+assert(#dropdowns["Elegir jugador"].options == 2 and dropdowns["Elegir jugador"].options[1] == "extra")
+dropdowns["Elegir jugador"]:Select("extra")
+players.PlayerRemoving:Fire(extra); table.remove(players.list, 3)
+controls["Solicitar golpe"](); assert(#calls == 7 and #dropdowns["Elegir jugador"].options == 1)
+dropdowns["Elegir jugador"]:Select("other")
+assert(table.find(dropdowns["Objeto"].options, "giver / NewGun"))
+controls["Actualizar objetos"](); assert(string.find(messages[#messages], "6"))
+dropdowns["Objeto"]:Select("giver / NewGun")
+controls["Solicitar objeto"](); assert(#calls == 8 and calls[8].arg == pickups["giver/NewGun"]); table.remove(calls)
+remotes.ItemHandler = nil; storage.remote = { FindFirstChild = function(_, name) if name == "ItemHandler" then return itemHandler end end }
+controls["Solicitar objeto"](); assert(#calls == 8 and calls[8].name == "ItemHandler"); table.remove(calls)
+storage.remote = nil; remotes.ItemHandler = itemHandler
+world.missingItems = true; controls["Solicitar objeto"](); assert(#calls == 7 and string.find(messages[#messages], "Prison_ITEMS")); world.missingItems = false
+dropdowns["Objeto"]:Select("MP5"); controls["Ir al punto del objeto"](); assert(me.Character.root.CFrame.X == 813.72)
+dropdowns["Objeto"]:Select("Key card"); controls["Diagnóstico de objetos"](); assert(string.find(messages[#messages], "ItemHandler"))
 controls["ESP jugadores"](true); heartbeat:Fire(0.2); assert(#visuals == 2 and visuals[2].Adornee == other.Character)
 other.Team = "blue"; controls["Ignorar equipo en ESP"](true); heartbeat:Fire(0.2); assert(visuals[2].destroyed)
 other.Team = "red"; heartbeat:Fire(0.2); assert(#visuals == 3)

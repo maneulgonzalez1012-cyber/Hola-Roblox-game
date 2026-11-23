@@ -14,6 +14,9 @@ assert(ok and rayfield, "No se pudo cargar Rayfield Gen 2: " .. tostring(rayfiel
 local window = rayfield:CreateWindow({ name = "VANTA Prison Life", subtitle = "Prison Life · experimental", sidebarLayout = true, theme = "cobalt" })
 local state = { item = "M9", target = "", esp = false, teamCheck = false, speedOn = false, speed = 24, jumpOn = false, jumpPower = 75, infiniteJump = false, noclip = false }
 local active, heartbeat, jumpConnection, elapsed = true, nil, nil, 0
+local playerAddedConnection, playerRemovingConnection
+local itemDropdown, playerDropdown
+local discovered = {}
 local invokeBusy = false
 local markers, collisions = {}, {}
 local motionHumanoid, oldSpeed, oldJump, oldUseJump
@@ -32,9 +35,14 @@ local function checkGame()
     return true
 end
 local function remote(name, class)
-    local remotes = Workspace:FindFirstChild("Remote")
-    local obj = remotes and remotes:FindFirstChild(name)
-    if obj and obj:IsA(class) then return obj end
+    for _, service in ipairs({ Workspace, ReplicatedStorage }) do
+        local remotes = service:FindFirstChild("Remote")
+        local obj = remotes and remotes:FindFirstChild(name)
+        if obj and obj:IsA(class) then return obj end
+    end
+end
+local function itemRoot()
+    return Workspace:FindFirstChild("Prison_ITEMS") or ReplicatedStorage:FindFirstChild("Prison_ITEMS")
 end
 local function fireTeam(color)
     if not checkGame() then return end
@@ -44,7 +52,7 @@ local function fireTeam(color)
     notify(sent and "Solicitud de equipo enviada; depende del servidor." or "Error: " .. tostring(err))
 end
 local items = {
-    ["M9"] = { "giver", "M9" }, ["Remington 870"] = { "giver", "Remington 870" },
+    ["M9"] = { "giver", "M9" }, ["MP5"] = { "giver", "MP5" }, ["Remington 870"] = { "giver", "Remington 870" },
     ["AK-47"] = { "giver", "AK-47" }, ["M4A1"] = { "giver", "M4A1" },
     ["Riot Shield"] = { "giver", "Riot Shield" }, ["Key card"] = { "single", "Key card" },
     ["Crude Knife"] = { "single", "Crude Knife" }, ["Hammer"] = { "single", "Hammer" },
@@ -63,14 +71,42 @@ local function invokeOnce(name, argument)
         notify(sent and "Solicitud terminada; la acción depende del servidor." or "Error: " .. tostring(err))
     end)
 end
+local itemOptions = { "M9", "MP5", "Remington 870", "AK-47", "M4A1", "Riot Shield", "Key card", "Crude Knife", "Hammer", "Breakfast", "Lunch", "Dinner" }
+local function refreshItems(quiet)
+    discovered = {}
+    local options = {}
+    for _, name in ipairs(itemOptions) do table.insert(options, name) end
+    local found = 0
+    local all = itemRoot()
+    if all then
+        for _, categoryName in ipairs({ "giver", "single" }) do
+            local category = all:FindFirstChild(categoryName)
+            if category then
+                for _, item in ipairs(category:GetChildren()) do
+                    if item:FindFirstChild("ITEMPICKUP", true) then
+                        local label = categoryName .. " / " .. item.Name
+                        discovered[label] = { categoryName, item.Name }
+                        table.insert(options, label)
+                        found = found + 1
+                    end
+                end
+            end
+        end
+    end
+    if not items[state.item] and not discovered[state.item] then state.item = "M9" end
+    if itemDropdown then itemDropdown:Refresh(options) end
+    if not quiet then notify("Objetos detectados: " .. tostring(found) .. ". Si faltan, acércate a la armería y actualiza.") end
+end
 local function requestItem()
     if not checkGame() then return end
-    local info = items[state.item]
-    local all = Workspace:FindFirstChild("Prison_ITEMS")
-    local category = info and all and all:FindFirstChild(info[1])
-    local item = category and category:FindFirstChild(info[2])
-    local pickup = item and item:FindFirstChild("ITEMPICKUP")
-    if not pickup then notify("No se encontró el objeto seleccionado."); return end
+    local info = items[state.item] or discovered[state.item]
+    local all = itemRoot()
+    if not all then notify("No se encontró Prison_ITEMS; usa Diagnóstico o acércate a la armería."); return end
+    local category = info and all:FindFirstChild(info[1])
+    if not category then notify("No se encontró la carpeta del objeto: " .. tostring(info and info[1] or state.item)); return end
+    local item = category:FindFirstChild(info[2], true)
+    local pickup = item and item:FindFirstChild("ITEMPICKUP", true)
+    if not pickup then notify("No se encontró " .. info[2] .. "/ITEMPICKUP; actualiza objetos o acércate."); return end
     invokeOnce("ItemHandler", pickup)
 end
 local function root(character)
@@ -80,7 +116,7 @@ end
 local function targetPlayer()
     if not checkGame() then return end
     local target = Players:FindFirstChild(state.target)
-    if not target or not target:IsA("Player") or target == me then notify("Escribe el nombre de usuario exacto de otro jugador."); return end
+    if not target or not target:IsA("Player") or target == me then notify("Selecciona otro jugador en la lista."); return end
     return target
 end
 local function restoreMotion()
@@ -158,6 +194,8 @@ local function cleanup()
     active = false
     if heartbeat then heartbeat:Disconnect() end
     if jumpConnection then jumpConnection:Disconnect() end
+    if playerAddedConnection then playerAddedConnection:Disconnect() end
+    if playerRemovingConnection then playerRemovingConnection:Disconnect() end
     restoreMotion(); clearCollisions(); clearMarkers(); folder:Destroy()
     if not window.unloaded then pcall(function() window:Unload() end) end
     if env and env.PrisonLifeUnload == cleanup then env.PrisonLifeUnload = nil end
@@ -165,8 +203,37 @@ end
 if env then env.PrisonLifeUnload = cleanup end
 
 local itemTab = window:CreateTab({ name = "Objetos" })
-itemTab:CreateDropdown({ name = "Objeto", options = { "M9", "Remington 870", "AK-47", "M4A1", "Riot Shield", "Key card", "Crude Knife", "Hammer", "Breakfast", "Lunch", "Dinner" }, value = "M9", callback = function(v) if items[v] then state.item = v end end })
+itemDropdown = itemTab:CreateDropdown({ name = "Objeto", options = itemOptions, value = "M9", callback = function(v) if items[v] or discovered[v] then state.item = v end end })
+itemTab:CreateButton({ name = "Actualizar objetos", description = "Añade a la lista los pickups que están replicados en este momento.", callback = function() if checkGame() then refreshItems(false) end end })
 itemTab:CreateButton({ name = "Solicitar objeto", description = "El servidor puede rechazarlo; algunos objetos requieren permisos.", callback = requestItem })
+local pickupLocations = {
+    ["MP5"] = { 813.72, 102.50, 2229.37 },
+    ["Remington 870"] = { 820.27, 102.50, 2229.31 },
+    ["AK-47"] = { -932.00, 100.74, 2039.50 },
+}
+itemTab:CreateButton({ name = "Ir al punto del objeto", description = "Para MP5, Remington 870 o AK-47; posición comunitaria, puede haber cambiado.", callback = function()
+    if not checkGame() then return end
+    local info = items[state.item] or discovered[state.item]
+    local pos = info and pickupLocations[info[2]]
+    local part = root(me.Character)
+    if not pos then notify("No hay punto conocido para este objeto."); return end
+    if not part then notify("Personaje no disponible."); return end
+    part.CFrame = CFrame.new(pos[1], pos[2], pos[3])
+    notify("Punto aproximado; actualiza objetos y recoge manualmente si es necesario.")
+end })
+itemTab:CreateButton({ name = "Diagnóstico de objetos", description = "Muestra el estado y lo copia al portapapeles si está disponible.", callback = function()
+    if not checkGame() then return end
+    local all = itemRoot()
+    local giver = all and all:FindFirstChild("giver")
+    local single = all and all:FindFirstChild("single")
+    local report = "Prison Life | PlaceId=" .. tostring(game.PlaceId) .. " GameId=" .. tostring(game.GameId)
+        .. " | Prison_ITEMS=" .. tostring(all ~= nil) .. " giver=" .. tostring(giver ~= nil) .. " single=" .. tostring(single ~= nil)
+        .. " | ItemHandler RemoteFunction=" .. tostring(remote("ItemHandler", "RemoteFunction") ~= nil)
+    print(report)
+    if type(setclipboard) == "function" then pcall(setclipboard, report) end
+    notify("Diagnóstico en consola; si puedes, compártelo. ItemHandler: " .. (remote("ItemHandler", "RemoteFunction") and "sí" or "no"))
+end })
+refreshItems(true)
 local teamTab = window:CreateTab({ name = "Equipos" })
 teamTab:CreateButton({ name = "Solicitar preso", callback = function() fireTeam("Bright orange") end })
 teamTab:CreateButton({ name = "Solicitar guardia", callback = function() fireTeam("Bright blue") end })
@@ -186,7 +253,25 @@ for _, data in ipairs({
     end })
 end
 local people = window:CreateTab({ name = "Jugadores" })
-people:CreateInput({ name = "Nombre de usuario", value = "", placeholder = "Nombre exacto", callback = function(v) state.target = v end })
+local function refreshPlayers(leaving)
+    local names, currentPresent = {}, false
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= me and player ~= leaving then
+            table.insert(names, player.Name)
+            if player.Name == state.target then currentPresent = true end
+        end
+    end
+    table.sort(names)
+    if not currentPresent then state.target = "" end
+    if playerDropdown then playerDropdown:Refresh(names) end
+end
+playerDropdown = people:CreateDropdown({ name = "Elegir jugador", options = {}, placeholder = "Selecciona un jugador", callback = function(v)
+    state.target = type(v) == "string" and v or ""
+end })
+refreshPlayers()
+playerAddedConnection = Players.PlayerAdded:Connect(function() if active then refreshPlayers() end end)
+playerRemovingConnection = Players.PlayerRemoving:Connect(function(player) if active then refreshPlayers(player) end end)
+people:CreateButton({ name = "Actualizar jugadores", callback = function() if checkGame() then refreshPlayers(); notify("Lista de jugadores actualizada.") end end })
 people:CreateButton({ name = "Ir a jugador", callback = function()
     local target = targetPlayer(); if not target then return end
     local mine, theirs = root(me.Character), root(target.Character)
