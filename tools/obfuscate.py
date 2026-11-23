@@ -14,13 +14,14 @@ group.add_argument("--players", action="store_true", help="Build VANTA Players w
 group.add_argument("--builder", action="store_true", help="Build Frontlines Builder with Prometheus")
 group.add_argument("--prison-life", action="store_true", help="Build Prison Life with Prometheus")
 group.add_argument("--desert", action="store_true", help="Build Desert Detectors with Prometheus")
+group.add_argument("--spy", action="store_true", help="Build VANTA Spy with Prometheus")
 choice = arguments.parse_args()
-if choice.break_in or choice.players or choice.builder or choice.prison_life or choice.desert:
+if choice.break_in or choice.players or choice.builder or choice.prison_life or choice.desert or choice.spy:
     prometheus = os.environ.get("PROMETHEUS_DIR")
     luajit = os.environ.get("LUAJIT")
     if not prometheus or not luajit:
         sys.exit("Set PROMETHEUS_DIR and LUAJIT; see README.md for setup.")
-    stem = "BreakIn" if choice.break_in else "VantaPlayers" if choice.players else "FrontlinesBuilder" if choice.builder else "DesertDetectors" if choice.desert else "PrisonLife"
+    stem = "BreakIn" if choice.break_in else "VantaPlayers" if choice.players else "FrontlinesBuilder" if choice.builder else "DesertDetectors" if choice.desert else "VantaSpy" if choice.spy else "PrisonLife"
     output = root / ("src/" + stem + ".obfuscated.lua")
     subprocess.run([
         luajit, str(Path(prometheus) / "cli.lua"),
