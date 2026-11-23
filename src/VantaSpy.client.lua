@@ -44,7 +44,9 @@ end
 
 -- Capacidades del executor (solo detección, sin instalar hooks todavía)
 local hasHookMetamethod = type(hookmetamethod) == "function"
+local hasHookFunction = type(hookfunction) == "function"
 local hasGetNamecallMethod = type(getnamecallmethod) == "function"
+local hasGetCallingScript = type(getcallingscript) == "function"
 local hasCheckCaller = type(checkcaller) == "function"
 local hasSetClipboard = type(setclipboard) == "function"
 local hasGetGc = type(getgc) == "function"
@@ -251,7 +253,7 @@ local function getFilteredOrigins()
     return out
 end
 
-local function recordRemoteCall(self, method, packedArgs)
+local function recordRemoteCall(self, method, packedArgs, returnPreview, callingScriptName)
     if state.destroyed or not state.capturing then
         return
     end
@@ -281,6 +283,8 @@ local function recordRemoteCall(self, method, packedArgs)
             count = 0,
             lastTime = os.clock(),
             lastArgs = "",
+            lastReturn = "",
+            lastCaller = "",
             lastPacked = nil,
         }
         state.logs[key] = entry
@@ -289,6 +293,8 @@ local function recordRemoteCall(self, method, packedArgs)
     entry.count = entry.count + 1
     entry.lastTime = os.clock()
     entry.lastArgs = serializeArgs(packedArgs)
+    entry.lastReturn = returnPreview or ""
+    entry.lastCaller = callingScriptName or "?"
     entry.lastPacked = packedArgs
 end
 
@@ -308,6 +314,17 @@ local function buildLuauSnippet(entry)
     return "local args = {\n" .. table.concat(argLines, ",\n") .. "\n}\n" .. entry.path .. ":" .. entry.method .. "(table.unpack(args, 1, " .. tostring(n) .. "))"
 end
 
+local function getCallerName()
+    if not hasGetCallingScript then
+        return "?"
+    end
+    local ok, scr = pcall(getcallingscript)
+    if ok and scr then
+        return safeFullName(scr)
+    end
+    return "?"
+end
+
 local function installHook()
     if state.hookInstalled then
         return true
@@ -321,10 +338,18 @@ local function installHook()
             if state.capturing and not state.destroyed then
                 if method == "FireServer" or method == "InvokeServer" then
                     local packed = table.pack(...)
-                    pcall(recordRemoteCall, self, method, packed)
+                    local caller = getCallerName()
                     local path = safeFullName(self)
                     if state.blockedPaths[path] then
+                        pcall(recordRemoteCall, self, method, packed, "<bloqueado>", caller)
                         return nil
+                    end
+                    if method == "InvokeServer" then
+                        local rets = table.pack(state.oldNamecall(self, ...))
+                        pcall(recordRemoteCall, self, method, packed, serializeArgs(rets), caller)
+                        return table.unpack(rets, 1, rets.n)
+                    else
+                        pcall(recordRemoteCall, self, method, packed, "", caller)
                     end
                 end
             end
@@ -478,9 +503,10 @@ local LogDropdown = SpyTab:CreateDropdown({
         state.selectedLogKey = choice
         local entry = state.logs[choice]
         if entry then
+            local retLine = (entry.lastReturn and entry.lastReturn ~= "") and ("\nRetorno: " .. entry.lastReturn) or ""
             SpyDetail:Set({
                 Title = entry.method .. " x" .. tostring(entry.count),
-                Content = "Ruta: " .. entry.path .. "\nArgs: " .. entry.lastArgs,
+                Content = "Ruta: " .. entry.path .. "\nCaller: " .. (entry.lastCaller or "?") .. "\nArgs: " .. entry.lastArgs .. retLine,
             })
         end
     end,
@@ -632,12 +658,30 @@ SpyTab:CreateButton({
     end,
 })
 
+SpyTab:CreateButton({
+    Name = "Limpiar ignorados",
+    Callback = function()
+        state.ignoredPaths = {}
+        Rayfield:Notify({ Title = "VANTA Spy", Content = "Lista de ignorados vaciada.", Duration = 3 })
+    end,
+})
+
+SpyTab:CreateButton({
+    Name = "Limpiar bloqueados",
+    Callback = function()
+        state.blockedPaths = {}
+        Rayfield:Notify({ Title = "VANTA Spy", Content = "Lista de bloqueados vaciada.", Duration = 3 })
+    end,
+})
+
 -- === PESTAÑA DIAGNÓSTICO Y VENTANA ===
 DiagTab:CreateParagraph({
     Title = "Capacidades del Executor",
     Content = table.concat({
         "hookmetamethod: " .. (hasHookMetamethod and "disponible" or "no disponible"),
+        "hookfunction: " .. (hasHookFunction and "disponible" or "no disponible"),
         "getnamecallmethod: " .. (hasGetNamecallMethod and "disponible" or "no disponible"),
+        "getcallingscript: " .. (hasGetCallingScript and "disponible" or "no disponible"),
         "checkcaller: " .. (hasCheckCaller and "disponible" or "no disponible"),
         "setclipboard: " .. (hasSetClipboard and "disponible" or "no disponible"),
         "getgc: " .. (hasGetGc and "disponible" or "no disponible"),
