@@ -65,7 +65,13 @@ local state = {
     capturing = false,
     destroyed = false,
     hookInstalled = false,
+    funcHookInstalled = false,
+    hookMode = "auto", -- "auto", "namecall", "hookfunction"
+    activeBackend = "ninguno",
     oldNamecall = nil,
+    oldFireServer = nil,
+    oldInvokeServer = nil,
+    oldUnreliableFire = nil,
     originFilter = "",
     logFilter = "",
     origins = {},          -- { { instance, name, className, origin, path } }
@@ -328,8 +334,77 @@ local function getCallerInfo()
     return "?", nil
 end
 
-local function installHook()
+local function installFunctionHooks()
+    if state.funcHookInstalled then
+        return true
+    end
+    if not hasHookFunction then
+        return false
+    end
+    local ok, err = pcall(function()
+        local re = Instance.new("RemoteEvent")
+        local rf = Instance.new("RemoteFunction")
+        state.oldFireServer = hookfunction(re.FireServer, function(self, ...)
+            if state.capturing and not state.destroyed and state.activeBackend == "hookfunction" then
+                local packed = table.pack(...)
+                local caller, callerInst = getCallerInfo()
+                local path = safeFullName(self)
+                if state.blockedPaths[path] then
+                    pcall(recordRemoteCall, self, "FireServer", packed, "<bloqueado>", caller, callerInst)
+                    return nil
+                end
+                pcall(recordRemoteCall, self, "FireServer", packed, "", caller, callerInst)
+            end
+            return state.oldFireServer(self, ...)
+        end)
+        state.oldInvokeServer = hookfunction(rf.InvokeServer, function(self, ...)
+            if state.capturing and not state.destroyed and state.activeBackend == "hookfunction" then
+                local packed = table.pack(...)
+                local caller, callerInst = getCallerInfo()
+                local path = safeFullName(self)
+                if state.blockedPaths[path] then
+                    pcall(recordRemoteCall, self, "InvokeServer", packed, "<bloqueado>", caller, callerInst)
+                    return nil
+                end
+                local rets = table.pack(state.oldInvokeServer(self, ...))
+                pcall(recordRemoteCall, self, "InvokeServer", packed, serializeArgs(rets), caller, callerInst)
+                return table.unpack(rets, 1, rets.n)
+            end
+            return state.oldInvokeServer(self, ...)
+        end)
+        pcall(function()
+            local ure = Instance.new("UnreliableRemoteEvent")
+            state.oldUnreliableFire = hookfunction(ure.FireServer, function(self, ...)
+                if state.capturing and not state.destroyed and state.activeBackend == "hookfunction" then
+                    local packed = table.pack(...)
+                    local caller, callerInst = getCallerInfo()
+                    local path = safeFullName(self)
+                    if state.blockedPaths[path] then
+                        pcall(recordRemoteCall, self, "FireServer", packed, "<bloqueado>", caller, callerInst)
+                        return nil
+                    end
+                    pcall(recordRemoteCall, self, "FireServer", packed, "", caller, callerInst)
+                end
+                return state.oldUnreliableFire(self, ...)
+            end)
+            ure:Destroy()
+        end)
+        re:Destroy()
+        rf:Destroy()
+    end)
+    if ok then
+        state.funcHookInstalled = true
+        state.activeBackend = "hookfunction"
+        return true
+    else
+        warn("[VANTA Spy] Error en hookfunction: " .. tostring(err))
+        return false
+    end
+end
+
+local function installNamecallHook()
     if state.hookInstalled then
+        state.activeBackend = "namecall"
         return true
     end
     if not hasHookMetamethod or not hasGetNamecallMethod then
@@ -338,7 +413,7 @@ local function installHook()
     local ok, err = pcall(function()
         state.oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
             local method = getnamecallmethod()
-            if state.capturing and not state.destroyed then
+            if state.capturing and not state.destroyed and state.activeBackend == "namecall" then
                 if method == "FireServer" or method == "InvokeServer" then
                     local packed = table.pack(...)
                     local caller, callerInst = getCallerInfo()
@@ -361,16 +436,30 @@ local function installHook()
     end)
     if ok then
         state.hookInstalled = true
+        state.activeBackend = "namecall"
         return true
     else
-        warn("[VANTA Spy] Error al instalar hook: " .. tostring(err))
+        warn("[VANTA Spy] Error al instalar __namecall: " .. tostring(err))
         return false
     end
 end
 
--- Construcción de UI Rayfield Gen 1
+local function installHook()
+    if state.hookMode == "hookfunction" then
+        return installFunctionHooks()
+    elseif state.hookMode == "namecall" then
+        return installNamecallHook()
+    else
+        if installNamecallHook() then
+            return true
+        end
+        return installFunctionHooks()
+    end
+end
+
+-- Construcción de UI Rayfield Gen 2
 local Window = Rayfield:CreateWindow({
-    Name = "VANTA Spy (Gen 1)",
+    Name = "VANTA Spy (Gen 2)",
     LoadingTitle = "VANTA Spy",
     LoadingSubtitle = "Orígenes y captura en solo lectura",
     ShowText = "VANTA Spy",
@@ -717,6 +806,27 @@ DiagTab:CreateParagraph({
         "decompile: " .. (hasDecompile and "disponible" or "no disponible"),
         "getgc: " .. (hasGetGc and "disponible" or "no disponible"),
     }, "\n"),
+})
+
+DiagTab:CreateDropdown({
+    Name = "Modo de Hook",
+    Options = { "auto (__namecall -> hookfunction)", "namecall", "hookfunction" },
+    CurrentOption = { "auto (__namecall -> hookfunction)" },
+    MultipleOptions = false,
+    Callback = function(selected)
+        local choice = type(selected) == "table" and selected[1] or selected
+        if string.find(choice, "hookfunction", 1, true) and choice == "hookfunction" then
+            state.hookMode = "hookfunction"
+        elseif choice == "namecall" then
+            state.hookMode = "namecall"
+        else
+            state.hookMode = "auto"
+        end
+        if state.capturing then
+            installHook()
+        end
+        Rayfield:Notify({ Title = "VANTA Spy", Content = "Modo activo: " .. state.activeBackend, Duration = 3 })
+    end,
 })
 
 DiagTab:CreateButton({
