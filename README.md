@@ -1,6 +1,27 @@
 # Scripts Roblox
 
-## VANTA Prison Life
+## VANTA Desert Detectors
+
+Hub independiente con Rayfield Gen 2 para Desert Detectors de Diggin' Devs. El ESP marca hasta 60 objetos replicados bajo `Workspace.Loot`, con nombre, distancia y atributos `Rarity`/`Material` solo cuando existen. No deduce rareza ni identifica tesoros ocultos que el cliente no recibe. Incluye teletransporte local al tesoro cercano y búsqueda de los NPC `Buffalo Bill`/`Abigail` para vender manualmente; pueden fallar por streaming, cambios del mapa o validación del servidor.
+
+El botón **Intentar dinero** envía una sola solicitud histórica a `ReplicatedStorage.Purchase_Crate` con una cantidad negativa basada en un [ejemplo comunitario de 2025](https://tradingpdf.net/5-desert-detectors-scripts-you-cant-miss/). Puede estar parcheado, rechazarse o afectar saldo/inventario: **no garantiza dinero** y no se ha probado en Roblox. No hay auto-venta ni excavación automática; el servidor decide los resultados. El [ESP comunitario histórico](https://networth.tube/roblox-scripts/5-best-scripts-for-desert-detectors/) señala `Workspace.Loot`, pero no es documentación oficial. Los desarrolladores informan de una [reescritura de sistemas](https://www.roblox.com/communities/35429391/Diggin-Devs), por lo que las referencias antiguas pueden no funcionar. El diagnóstico informa PlaceId, cantidad de objetos y presencia del remote; no envía datos a terceros.
+
+Cierra el hub con «Cerrar y limpiar». Si el executor soporta `getgenv`, al ejecutar nuevamente se limpia la instancia anterior. IDs admitidos: `73010525850196` y `86161665059642`. Usar scripts puede infringir las normas del juego y conllevar sanciones.
+
+```lua
+loadstring(game:HttpGet("https://raw.githubusercontent.com/maneulgonzalez1012-cyber/Hola-Roblox-game/arena/24653128-hola-roblox-game/src/DesertDetectors.obfuscated.lua"))()
+```
+
+La distribución usa Prometheus, **no Luarmor**: [licencia](licenses/Prometheus-LICENSE.txt). El código fuente sigue público. Para regenerar y probar con las dependencias de Break In:
+
+```sh
+PROMETHEUS_DIR=/ruta/Prometheus LUAJIT=/ruta/LuaJIT/src/luajit python3 tools/obfuscate.py --desert
+LUA=/ruta/luau/luau python3 tools/test_desert.py
+```
+
+Las pruebas son simulaciones locales, no una prueba real del juego ni de su servidor.
+
+# VANTA Prison Life
 
 Hub separado para **Prison Life de Aesthetical** (universo `73885730`, lugar `155615604`). Ofrece solicitudes manuales de objetos y equipos, viaje a lugares históricos o a un jugador, un intento de golpe/arresto a un usuario concreto, ESP, velocidad, salto, salto infinito y noclip local. Las funciones continuas están desactivadas al iniciar. Cerrar el hub restaura velocidad, salto y colisiones guardados y elimina las marcas. La lista de jugadores usa nombres de usuario y se actualiza cuando entran o salen; también hay un botón para refrescarla.
 
