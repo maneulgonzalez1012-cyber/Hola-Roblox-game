@@ -14,6 +14,14 @@ T2 = 'b' * 64
 URL = 'https://auth.platorelay.com/a?d=' + T1
 
 class Tests(unittest.TestCase):
+    def test_network_detection(self):
+        entries = [(0, 0, 0, '', ('192.168.1.4', 0)),
+                   (0, 0, 0, '', ('127.0.0.1', 0)),
+                   (0, 0, 0, '', ('169.254.1.4', 0)),
+                   (0, 0, 0, '', ('8.8.8.8', 0))]
+        with patch.object(app.socket, 'getaddrinfo', return_value=entries):
+            self.assertEqual(app.local_ipv4_addresses(), ['192.168.1.4'])
+
     def test_validation(self):
         self.assertEqual(app.ticket_from_url(URL), T1)
         for bad in ['http://auth.platorelay.com/a?d=' + T1,
@@ -61,6 +69,13 @@ class Tests(unittest.TestCase):
             for token, origin in [('wrong', root), ('secret', 'http://evil.test')]:
                 with self.assertRaises(HTTPError) as ctx: post(token, origin)
                 self.assertEqual(ctx.exception.code, 403)
+            headers = {'Content-Type': 'application/json', 'Origin': root, 'X-Local-Token': 'secret'}
+            with urlopen(Request(root + '/connected', b'{}', headers)) as r:
+                self.assertEqual(json.load(r), {'connected': True, 'remote': False})
+            headers['X-Local-Token'] = 'wrong'
+            with self.assertRaises(HTTPError) as ctx:
+                urlopen(Request(root + '/connected', b'{}', headers))
+            self.assertEqual(ctx.exception.code, 403)
             with patch.object(app, 'solve', return_value='FREE_test'):
                 with post('secret', root) as r:
                     self.assertEqual(json.load(r)['key'], 'FREE_test')

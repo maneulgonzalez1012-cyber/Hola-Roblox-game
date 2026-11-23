@@ -6,8 +6,10 @@ import argparse
 import base64
 import hmac
 import json
+import ipaddress
 import re
 import secrets
+import socket
 import time
 import urllib.error
 import urllib.parse
@@ -177,9 +179,18 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         origin = self.headers.get('Origin', '')
         host = self.headers.get('Host', '')
-        if (self.path != '/solve' or not hmac.compare_digest(self.headers.get('X-Local-Token', ''), self.server.token)
+        supplied_token = self.headers.get('X-Local-Token', '').encode('utf-8')
+        if (self.path not in ('/solve', '/connected')
+                or not hmac.compare_digest(supplied_token, self.server.token.encode('ascii'))
                 or origin != 'http://' + host or self.headers.get_content_type() != 'application/json'):
             return self.send(403, b'{"error":"Acceso denegado"}', 'application/json')
+        if self.path == '/connected':
+            address = self.client_address[0]
+            remote = not ipaddress.ip_address(address).is_loopback
+            if remote:
+                print('\n[OK] Un dispositivo remoto abrio la pagina y se conecto al servidor.', flush=True)
+                print('Esto confirma conectividad, no que ambos usen el mismo Wi-Fi.', flush=True)
+            return self.send(200, json.dumps({'connected': True, 'remote': remote}).encode(), 'application/json')
         try:
             length = int(self.headers.get('Content-Length', '0'))
             if length < 1 or length > 10000:
@@ -196,6 +207,19 @@ class Handler(BaseHTTPRequestHandler):
         self.send(status, json.dumps(result, ensure_ascii=False).encode(), 'application/json; charset=utf-8')
 
 
+def local_ipv4_addresses():
+    """Possible local interfaces, not proof of iPhone connectivity or shared Wi-Fi."""
+    addresses = set()
+    try:
+        for entry in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            ip = ipaddress.ip_address(entry[4][0])
+            if ip.is_private and not ip.is_loopback and not ip.is_link_local:
+                addresses.add(str(ip))
+    except OSError:
+        pass
+    return sorted(addresses)
+
+
 def main():
     parser = argparse.ArgumentParser(description='Servidor local experimental de Delta Key')
     parser.add_argument('--lan', action='store_true', help='Permitir acceso desde la red local; usar solo en Wi-Fi privada')
@@ -205,8 +229,14 @@ def main():
     server.token = secrets.token_urlsafe(32)
     print('En este dispositivo: http://127.0.0.1:%d/#%s' % (server.server_port, server.token), flush=True)
     if args.lan:
-        print('En iPhone: cambia 127.0.0.1 por la IP local de este equipo, conservando puerto y texto después de #.', flush=True)
-        print('Solo Wi-Fi privada: HTTP no cifra el tráfico. No compartas el enlace.', flush=True)
+        print('\nAbre uno de estos enlaces COMPLETOS en Safari del iPhone:', flush=True)
+        addresses = local_ipv4_addresses()
+        for address in addresses:
+            print('  http://%s:%d/#%s' % (address, server.server_port, server.token), flush=True)
+        if not addresses:
+            print('No se detecto una IP local automaticamente. Usa ipconfig y reemplaza 127.0.0.1 por la IPv4 de Wi-Fi.', flush=True)
+        print('Si hay varias IP, prueba la de Wi-Fi. Esperando conexion del iPhone...', flush=True)
+        print('Solo Wi-Fi privada: HTTP no cifra el trafico. No compartas el enlace.', flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

@@ -2,7 +2,18 @@
 
 Intenta obtener la key desde una URL `https://auth.platorelay.com/a?d=...`. Usa una interfaz HTML para iPhone y un servidor Python. **No está probado contra una sesión real ni garantiza éxito.** Basado en la secuencia de [Delta-solve-keysystem-tool](https://github.com/xiaobai1023/Delta-solve-keysystem-tool), cuya licencia MIT se incluye en `UPSTREAM-LICENSE.txt`. Su funcionamiento y vigencia no están verificados.
 
-## Iniciar desde una computadora y abrir en iPhone
+## Windows: iniciar con el BAT y conectar el iPhone
+
+1. Descarga el ZIP y **extrae todos los archivos** a una carpeta en la computadora Windows. No ejecutes el BAT desde dentro del ZIP.
+2. Conecta Windows y el iPhone a una Wi-Fi privada. Ejecuta `INICIAR_WINDOWS.bat` con doble clic. Si falta Python, el BAT ofrece instalarlo con winget; si no está disponible, instala Python desde python.org y vuelve a abrir el BAT. El BAT crea un entorno local e instala la dependencia con Internet.
+3. Si el firewall de Windows pregunta, permite el acceso de Python solo en **redes privadas**. Mantén abierta la ventana negra del BAT: ahí aparecerán uno o más enlaces completos con una IP, puerto y token después de `#`.
+4. En el iPhone, abre Safari o Chrome y escribe uno de esos enlaces **completos**, incluido el token. Si hay varias direcciones prueba la que corresponda al Wi-Fi en `ipconfig`; las otras pueden ser de adaptadores virtuales o VPN.
+5. La página indica si se conectó a la computadora y la ventana del BAT muestra `[OK]` al recibir una conexión remota autorizada. Esto demuestra conectividad, **no prueba que estén en la misma Wi-Fi**: redes enrutadas o VPN también podrían permitirla. Si no carga, revisa Wi-Fi, IP y firewall; algunas redes bloquean la comunicación entre dispositivos.
+6. En Delta del iPhone, copia el enlace de key. Pégalo en la página y pulsa **Intentar obtener key**. Si devuelve una key, cópiala manualmente y pégala en Delta. No hay garantía de éxito. Para terminar, cierra la ventana del BAT.
+
+La URL local contiene un token secreto; no la publiques ni la compartas con terceros. El token cambia al reiniciar. Si recargas la página, vuelve a abrir el enlace completo.
+
+## Inicio manual para macOS / Linux
 
 1. Instala Python 3.9+ en tu computadora. En una terminal, dentro de `delta_key`, ejecuta:
    ```sh

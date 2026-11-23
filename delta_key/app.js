@@ -5,6 +5,22 @@ const form = document.querySelector('#form');
 const status = document.querySelector('#status');
 const output = document.querySelector('#output');
 const button = document.querySelector('#run');
+const connection = document.querySelector('#connection');
+async function checkConnection() {
+  if (!token) {
+    connection.textContent = 'Falta el token: abre el enlace completo que muestra la computadora.';
+    return;
+  }
+  try {
+    const response = await fetch('/connected', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-Local-Token': token}, body: '{}'});
+    if (!response.ok) throw new Error();
+    const result = await response.json();
+    connection.textContent = result.remote ? 'Conectado a la computadora. Ya puedes pegar el enlace de Delta.' : 'Conectado desde esta computadora. Para comprobar el iPhone, abre allí el enlace completo.';
+  } catch (_) {
+    connection.textContent = 'No se pudo comprobar la conexión. Mantén abierto el programa y vuelve a abrir el enlace completo.';
+  }
+}
+checkConnection();
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   output.hidden = true;
