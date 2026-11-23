@@ -21,7 +21,7 @@ local StarterPack = getService("StarterPack")
 local ReplicatedFirst = getService("ReplicatedFirst")
 local Lighting = getService("Lighting")
 
-local RAYFIELD_URL = "https://raw.githubusercontent.com/sirius-menu/rayfield/fe922012da6e6d33b41d656095ce62fd5be05047/source.lua"
+local RAYFIELD_URL = "https://sirius.menu/rayfield"
 
 local function loadRayfield()
     if type(_G) == "table" and _G.__VANTA_RAYFIELD_MOCK then
